@@ -126,7 +126,9 @@ class _TradesState extends State<Trades> {
               },
             ),
           ),
+
           VerticalDivider(),
+
           Expanded(
             flex: 2,
             child: selectedTradeHash == null
@@ -189,7 +191,7 @@ class _TradesState extends State<Trades> {
                             final messages = List<Map<String, dynamic>>.from(
                                 tradeMessages['messages']);
                             final myUsername =
-                                '2minmax_pro'; // Replace this with the actual username
+                                '2minmax_pro';
 
                             return ListView.builder(
                               itemCount: messages.length,
