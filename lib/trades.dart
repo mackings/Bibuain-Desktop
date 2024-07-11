@@ -78,56 +78,54 @@ class _TradesState extends State<Trades> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Trades'),
-      ),
+
       body: Row(
         children: [
-          Expanded(
-            flex: 1,
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('trades')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No trades available'));
-                }
+          // Expanded(
+          //   flex: 1,
+          //   child: StreamBuilder<QuerySnapshot>(
+          //     stream: FirebaseFirestore.instance
+          //         .collection('trades')
+          //         .orderBy('timestamp', descending: true)
+          //         .snapshots(),
+          //     builder: (context, snapshot) {
+          //       if (snapshot.connectionState == ConnectionState.waiting) {
+          //         return Center(child: CircularProgressIndicator());
+          //       }
+          //       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          //         return Center(child: Text('No trades available'));
+          //       }
 
-                final trades = snapshot.data!.docs;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _autoSelectLatestTrade(trades);
-                });
+          //       final trades = snapshot.data!.docs;
+          //       WidgetsBinding.instance.addPostFrameCallback((_) {
+          //         _autoSelectLatestTrade(trades);
+          //       });
 
-                return ListView.builder(
-                  itemCount: trades.length,
-                  itemBuilder: (context, index) {
-                    final trade = trades[index].data() as Map<String, dynamic>;
-                    final tradeHash = trade['trade_hash'];
-                    final tradeTime =
-                        _convertToDateTime(trade['timestamp']).toString();
+          //       return ListView.builder(
+          //         itemCount: trades.length,
+          //         itemBuilder: (context, index) {
+          //           final trade = trades[index].data() as Map<String, dynamic>;
+          //           final tradeHash = trade['trade_hash'];
+          //           final tradeTime =
+          //               _convertToDateTime(trade['timestamp']).toString();
 
-                    return ListTile(
-                      title: Text('Trade Hash: $tradeHash'),
-                      subtitle: Text('Time: $tradeTime'),
-                      selected: selectedTradeHash == tradeHash,
-                      onTap: () {
-                        setState(() {
-                          selectedTradeHash = tradeHash;
-                        });
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+          //           return ListTile(
+          //             title: Text('Trade Hash: $tradeHash'),
+          //             subtitle: Text('Time: $tradeTime'),
+          //             selected: selectedTradeHash == tradeHash,
+          //             onTap: () {
+          //               setState(() {
+          //                 selectedTradeHash = tradeHash;
+          //               });
+          //             },
+          //           );
+          //         },
+          //       );
+          //     },
+          //   ),
+          // ),
 
-          VerticalDivider(),
+         // VerticalDivider(),
 
           Expanded(
             flex: 2,

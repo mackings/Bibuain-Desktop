@@ -15,7 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   static List<Widget> _pages = <Widget>[
-    Center(child: Text('Home Page')),
+    Trades(),
     Center(child: Text('Settings Page')),
     Center(child: Text('Profile Page')),
   ];
@@ -44,6 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.home),
                 selectedIcon: Icon(Icons.home_filled),
                 label: Text('Home'),
+              ),
+
+               NavigationRailDestination(
+                icon: Icon(Icons.help_center),
+               // selectedIcon: Icon(Icons.person),
+                label: Text('CC'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.settings),
