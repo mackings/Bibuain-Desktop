@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:sizer/sizer.dart';
 
 class Trades extends StatefulWidget {
   const Trades({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class Trades extends StatefulWidget {
 }
 
 class _TradesState extends State<Trades> {
+
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -67,7 +69,7 @@ class _TradesState extends State<Trades> {
           'author': '2minmax_pro',
           'text': messageText,
           'timestamp': Timestamp.now(),
-          'type': 'text' // or any other type you need
+          'type': 'text' 
         };
 
         await FirebaseFirestore.instance
@@ -133,7 +135,7 @@ class _TradesState extends State<Trades> {
     "Lotus Bank",
     "Mayfair MFB",
     "Moniepoint MFB"
-        "Mint MFB",
+    "Mint MFB",
     "Paga",
     "PalmPay",
     "Parallex Bank",
@@ -163,6 +165,10 @@ class _TradesState extends State<Trades> {
     "Zenith Bank"
   ];
 
+  String? accumulatedBankName;
+  String? accumulatedAccountNumber;
+  String? accumulatedAccountHolder;
+
   Map<String, dynamic>? _checkForBankDetails(
       List<Map<String, dynamic>> messages) {
     for (var message in messages) {
@@ -176,6 +182,8 @@ class _TradesState extends State<Trades> {
             if (text.contains(bankName.toLowerCase())) {
               print('Bank Name: $bankName');
               print('Account Number: ${numberRegExp.stringMatch(text)}');
+              accumulatedBankName = bankName;
+              accumulatedAccountNumber = numberRegExp.stringMatch(text);
               // Extract other necessary details as per your message structure
               return {
                 'bank_name': bankName,
@@ -197,6 +205,8 @@ class _TradesState extends State<Trades> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 40),
         child: Row(
           children: [
+
+            
             Expanded(
               flex: 4,
               child: StreamBuilder<QuerySnapshot>(
@@ -241,16 +251,13 @@ class _TradesState extends State<Trades> {
                       final messages = List<Map<String, dynamic>>.from(
                           tradeMessages['messages']);
 
-                      // Check if there's already a bank account instruction message
                       final bankAccountMessage = messages.firstWhere(
                         (message) =>
                             message['type'] == 'bank-account-instruction',
-                        orElse: () =>
-                            {}, // Return an empty map if no bank-account-instruction message is found
+                        orElse: () => {},
                       );
 
                       if (bankAccountMessage.isEmpty) {
-                        // No bank account instruction message, check for bank details in other messages
                         Map<String, dynamic>? bankDetails =
                             _checkForBankDetails(messages);
 
@@ -291,30 +298,98 @@ class _TradesState extends State<Trades> {
                       final Bank_name = bankAccount['bank_name'];
                       final Amount = bankAccount['amount'];
 
-                      // return Container(
-                      //   padding: EdgeInsets.all(10),
-                      //   margin: EdgeInsets.symmetric(vertical: 5),
-                      //   decoration: BoxDecoration(
-                      //     color: Colors.grey[200],
-                      //     borderRadius: BorderRadius.circular(10),
-                      //   ),
-                      //   child: Text(bankAccountDetails),
-                      // );
-
                       return Column(
                         children: [
-                        Text(Account_name),
-                        Text(Account_number),
-                        Text(Bank_name),
-                        Text(Amount)
-                      ]);
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(width: 0.5),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            width: MediaQuery.of(context).size.width - 30.w,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Seller's details",
+                                    style: GoogleFonts.poppins(
+                                        textStyle: TextStyle(
+                                            fontSize: 10.sp,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Account Name :",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(Account_name),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Account Number :",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        Account_number,
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 8.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Bank Name:",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        Bank_name,
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 8.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Text(Amount)
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
                     },
                   );
                 },
               ),
             ),
             SizedBox(width: 20),
-
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -334,9 +409,11 @@ class _TradesState extends State<Trades> {
                                 return Center(
                                     child: CircularProgressIndicator());
                               }
-                              if (!snapshot.hasData || !snapshot.data!.exists) {
+                              if (!snapshot.hasData ||
+                                  !snapshot.data!.exists) {
                                 return Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.chat, size: 40),
                                       Text("No Messages",
@@ -359,7 +436,8 @@ class _TradesState extends State<Trades> {
                                   final messageAuthor = message['author'];
                                   final messageType = message['type'];
 
-                                  final isMine = messageAuthor == myUsername;
+                                  final isMine =
+                                      messageAuthor == myUsername;
 
                                   String messageText;
 
@@ -371,7 +449,8 @@ class _TradesState extends State<Trades> {
                                         bankAccount['holder_name'];
                                     final Account_number =
                                         bankAccount['account_number'];
-                                    final Bank_name = bankAccount['bank_name'];
+                                    final Bank_name =
+                                        bankAccount['bank_name'];
                                     final Amount = bankAccount['amount'];
 
                                     messageText = '''
@@ -382,7 +461,8 @@ class _TradesState extends State<Trades> {
                                       Currency: ${bankAccount['currency'].toString()}
                                     ''';
                                   } else {
-                                    messageText = message['text'].toString();
+                                    messageText =
+                                        message['text'].toString();
                                   }
 
                                   return Align(
@@ -394,7 +474,8 @@ class _TradesState extends State<Trades> {
                                         color: isMine
                                             ? Colors.blue[200]
                                             : Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
                                       ),
                                       padding: EdgeInsets.all(10),
                                       margin: EdgeInsets.symmetric(
@@ -453,17 +534,14 @@ class _TradesState extends State<Trades> {
                               _responseMessage,
                               style: TextStyle(
                                 color: _responseMessage.startsWith('Failed')
-                                    ? Colors.red
-                                    : Colors.green,
+                                    ? Colors.transparent
+                                    : Colors.transparent,
                               ),
                             ),
                           ),
                       ],
                     ),
             ),
-
-
-            
           ],
         ),
       ),

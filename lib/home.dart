@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bdesktop/alltrades.dart';
 import 'package:bdesktop/trades.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static List<Widget> _pages = <Widget>[
     Trades(),
     Center(child: Text('Settings Page')),
-    Center(child: Text('Profile Page')),
+    AllTrades(),
+    Center(child: Text('Settings Page')),
   ];
 
   void _onItemTapped(int index) {
@@ -93,17 +95,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.settings),
-                    selectedIcon: Icon(Icons.settings),
-                    label: Text('Settings',style: GoogleFonts.poppins(
+                    icon: Icon(Icons.bar_chart),
+                    selectedIcon: Icon(Icons.bar_chart),
+                    label: Text('All Trades',style: GoogleFonts.poppins(
                         fontSize: 9.sp,
                         fontWeight: FontWeight.w600
                         ),),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.person),
+                    icon: Icon(Icons.settings),
                     selectedIcon: Icon(Icons.person),
-                    label: Text('Profile'),
+                    label: Text('Settings',style: GoogleFonts.poppins(
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w600
+                        ),),
                   ),
                 ],
               ),
