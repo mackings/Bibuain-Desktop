@@ -384,6 +384,22 @@ class _TradesState extends State<Trades> {
 
                       return Column(
                         children: [
+
+                          Container(
+                            height: 8.h,
+                            width: MediaQuery.of(context).size.width-20,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.blue
+                            ),
+                            child: Column(
+                              children: [
+                               // Text("Hello")
+
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 2.h,),
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(width: 0.5),
@@ -427,14 +443,14 @@ class _TradesState extends State<Trades> {
                                         "Account Number :",
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 5.sp,
+                                                fontSize: 8.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
                                         Account_number,
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 8.sp,
+                                                fontSize: 12.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                     ],
@@ -448,14 +464,14 @@ class _TradesState extends State<Trades> {
                                         "Bank Name:",
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 5.sp,
+                                                fontSize: 8.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
                                         Bank_name,
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 8.sp,
+                                                fontSize: 13.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                     ],
@@ -470,14 +486,14 @@ class _TradesState extends State<Trades> {
                                         "Amount:",
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 5.sp,
+                                                fontSize: 8.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
                                         "N${Amount}",
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
-                                                fontSize: 15.sp,
+                                                fontSize: 18.sp,
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                     ],
@@ -486,6 +502,26 @@ class _TradesState extends State<Trades> {
                               ),
                             ),
                           ),
+                          SizedBox(height: 5.h,),
+
+                          Row(
+                            children: [
+                              Container(
+                                height: 5.h,
+                                width: 20.w,
+                                child: Center(child: Text("To CC",style: GoogleFonts.poppins(),)),
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white
+                                  )
+                                ),
+                              )
+                            ],
+                          )
+
+
                         ],
                       );
                     },
