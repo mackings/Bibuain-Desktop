@@ -14,7 +14,6 @@ class Trades extends StatefulWidget {
 }
 
 class _TradesState extends State<Trades> {
-
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -69,7 +68,7 @@ class _TradesState extends State<Trades> {
           'author': '2minmax_pro',
           'text': messageText,
           'timestamp': Timestamp.now(),
-          'type': 'text' 
+          'type': 'text'
         };
 
         await FirebaseFirestore.instance
@@ -82,6 +81,40 @@ class _TradesState extends State<Trades> {
         setState(() {
           _responseMessage = 'Message sent successfully.';
           _messageController.clear();
+        });
+      } else {
+        setState(() {
+          _responseMessage = 'Failed to send message: ${response.statusCode}';
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _responseMessage = 'Error sending message: $error';
+      });
+    }
+  }
+
+  Future<void> _MarkPaid() async {
+    const String apiUrl = 'https://b-backend-xe8q.onrender.com/paxful/pay';
+    final String messageText = _messageController.text;
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body:
+            jsonEncode(<String, String>{'hash': selectedTradeHash.toString()}),
+      );
+
+      print('Hash for Marking ${selectedTradeHash}');
+
+      if (response.statusCode == 200) {
+        print(response.body);
+        setState(() {
+          _responseMessage = 'Message sent successfully.';
+          // _messageController.clear();
         });
       } else {
         setState(() {
@@ -135,7 +168,7 @@ class _TradesState extends State<Trades> {
     "Lotus Bank",
     "Mayfair MFB",
     "Moniepoint MFB"
-    "Mint MFB",
+        "Mint MFB",
     "Paga",
     "PalmPay",
     "Parallex Bank",
@@ -174,28 +207,81 @@ class _TradesState extends State<Trades> {
     for (var message in messages) {
       if (message['type'] != 'bank-account-instruction') {
         String text = message['text'].toString().toLowerCase();
-        // Check for a 10-digit number
         RegExp numberRegExp = RegExp(r'\b\d{10}\b');
         if (numberRegExp.hasMatch(text)) {
-          // Check for any bank name in the message
           for (String bankName in bankNames) {
             if (text.contains(bankName.toLowerCase())) {
               print('Bank Name: $bankName');
               print('Account Number: ${numberRegExp.stringMatch(text)}');
               accumulatedBankName = bankName;
               accumulatedAccountNumber = numberRegExp.stringMatch(text);
-              // Extract other necessary details as per your message structure
               return {
                 'bank_name': bankName,
                 'account_number': numberRegExp.stringMatch(text),
-                // You may need to extract other details as per your message structure
               };
             }
           }
         }
+
+        // Check for amount in the format <b>23,769.68 NGN</b>
+        RegExp amountRegExp = RegExp(r'<b>([\d,.]+)\s*(\w+)</b>');
+        Match? amountMatch = amountRegExp.firstMatch(text);
+        if (amountMatch != null) {
+          String amount = amountMatch.group(1)!; // Extract the amount
+          String currency = amountMatch.group(2)!; // Extract the currency
+          print('Amount: $amount $currency');
+          // Return or store the amount and currency as needed
+          return {
+            'amount': amount,
+            'currency': currency,
+            // Add other necessary details as per your message structure
+          };
+        }
       }
     }
     return null;
+  }
+
+  Future<void> _markAsComplaint() async {
+    if (selectedTradeHash == null) {
+      setState(() {
+        _responseMessage = 'No trade selected.';
+      });
+      return;
+    }
+
+    try {
+      final tradeDoc = await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(selectedTradeHash)
+          .get();
+
+      if (tradeDoc.exists) {
+        final tradeData = tradeDoc.data() as Map<String, dynamic>;
+
+        await FirebaseFirestore.instance
+            .collection('complaints')
+            .doc(selectedTradeHash)
+            .set(tradeData);
+
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(selectedTradeHash)
+            .update({'status': 'unresolved'});
+
+        setState(() {
+          _responseMessage = 'Trade marked as complaint successfully.';
+        });
+      } else {
+        setState(() {
+          _responseMessage = 'Trade not found.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _responseMessage = 'An error occurred: $e';
+      });
+    }
   }
 
   @override
@@ -205,8 +291,6 @@ class _TradesState extends State<Trades> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 40),
         child: Row(
           children: [
-
-            
             Expanded(
               flex: 4,
               child: StreamBuilder<QuerySnapshot>(
@@ -377,7 +461,27 @@ class _TradesState extends State<Trades> {
                                     ],
                                   ),
                                   Divider(),
-                                  Text(Amount)
+                                  // Text(Amount)
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Amount:",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        "N${Amount}",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 15.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -409,11 +513,9 @@ class _TradesState extends State<Trades> {
                                 return Center(
                                     child: CircularProgressIndicator());
                               }
-                              if (!snapshot.hasData ||
-                                  !snapshot.data!.exists) {
+                              if (!snapshot.hasData || !snapshot.data!.exists) {
                                 return Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.chat, size: 40),
                                       Text("No Messages",
@@ -436,8 +538,7 @@ class _TradesState extends State<Trades> {
                                   final messageAuthor = message['author'];
                                   final messageType = message['type'];
 
-                                  final isMine =
-                                      messageAuthor == myUsername;
+                                  final isMine = messageAuthor == myUsername;
 
                                   String messageText;
 
@@ -449,8 +550,7 @@ class _TradesState extends State<Trades> {
                                         bankAccount['holder_name'];
                                     final Account_number =
                                         bankAccount['account_number'];
-                                    final Bank_name =
-                                        bankAccount['bank_name'];
+                                    final Bank_name = bankAccount['bank_name'];
                                     final Amount = bankAccount['amount'];
 
                                     messageText = '''
@@ -461,8 +561,7 @@ class _TradesState extends State<Trades> {
                                       Currency: ${bankAccount['currency'].toString()}
                                     ''';
                                   } else {
-                                    messageText =
-                                        message['text'].toString();
+                                    messageText = message['text'].toString();
                                   }
 
                                   return Align(
@@ -474,8 +573,7 @@ class _TradesState extends State<Trades> {
                                         color: isMine
                                             ? Colors.blue[200]
                                             : Colors.grey[200],
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       padding: EdgeInsets.all(10),
                                       margin: EdgeInsets.symmetric(
@@ -521,6 +619,9 @@ class _TradesState extends State<Trades> {
                               SizedBox(width: 10),
                               FloatingActionButton(
                                 mini: true,
+                                //_sendMessage,
+                                //_markAsComplaint,
+                               // _MarkPaid,
                                 onPressed: _sendMessage,
                                 child: Icon(Icons.send),
                               ),

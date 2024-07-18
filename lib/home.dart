@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:bdesktop/alltrades.dart';
+import 'package:bdesktop/complains.dart';
 import 'package:bdesktop/trades.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static List<Widget> _pages = <Widget>[
     Trades(),
-    Center(child: Text('Settings Page')),
+    AllComplains(),
     AllTrades(),
     Center(child: Text('Settings Page')),
   ];

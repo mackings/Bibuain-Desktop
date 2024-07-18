@@ -31,65 +31,10 @@ class _AllTradesState extends State<AllTrades> {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
-  void _autoSelectLatestTrade(List<DocumentSnapshot> trades) {
-    final latestTradeHash =
-        trades.isNotEmpty ? trades.first.get('trade_hash') : null;
-    if (latestTradeHash != selectedTradeHash) {
-      setState(() {
-        selectedTradeHash = latestTradeHash;
-      });
-    }
-  }
-
-  Future<void> _sendMessage() async {
-    const String apiUrl = 'https://b-backend-xe8q.onrender.com/paxful/send-message';
-    final String messageText = _messageController.text;
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'message': messageText,
-          'hash': selectedTradeHash.toString(),
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final messageData = {
-          'author': '2minmax_pro',
-          'text': messageText,
-          'timestamp': Timestamp.now(),
-          'type': 'text',
-        };
-
-        await FirebaseFirestore.instance
-            .collection('tradeMessages')
-            .doc(selectedTradeHash)
-            .update({
-          'messages': FieldValue.arrayUnion([messageData])
-        });
-
-        setState(() {
-          _responseMessage = 'Message sent successfully.';
-          _messageController.clear();
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Failed to send message: ${response.statusCode}';
-        });
-      }
-    } catch (error) {
-      setState(() {
-        _responseMessage = 'Error sending message: $error';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
@@ -107,7 +52,7 @@ class _AllTradesState extends State<AllTrades> {
                     .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
                     .where('timestamp', isLessThanOrEqualTo: endOfDay)
                     .orderBy('timestamp', descending: true)
-                    .limit(20) // Limit to the latest 20 trades
+                    .limit(1000) // Limit to the latest 20 trades
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
