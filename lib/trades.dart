@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bdesktop/widgets/paid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,6 +29,27 @@ class _TradesState extends State<Trades> {
     } else {
       return DateTime.now();
     }
+  }
+
+  String formatNaira(dynamic amount) {
+    double parsedAmount;
+
+    // Check if the input is already a double, if not, try to parse it
+    if (amount is double) {
+      parsedAmount = amount;
+    } else if (amount is String) {
+      parsedAmount = double.tryParse(amount) ?? 0.0;
+    } else {
+      throw ArgumentError(
+          'Input should be a double or a string representing a number');
+    }
+
+    // Convert the amount to a string with commas as thousand separators
+    String formattedAmount = parsedAmount.toStringAsFixed(2).replaceAllMapped(
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (Match match) => ',',
+        );
+    return '₦$formattedAmount';
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -128,6 +150,28 @@ class _TradesState extends State<Trades> {
     }
   }
 
+  Future<void> _VerifyAccount() async {
+    const String apiUrl =
+        'https://nubapi.com/verify?account_number={3121613812}&bank_code={011}';
+    final String messageText = _messageController.text;
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+      if (response.statusCode == 200) {
+        print(response.body);
+      } else {
+        print(response.body);
+      }
+    } catch (error) {
+      print(error);
+    }
+  }
+
   List<String> bankNames = [
     "Abbey Mortgage Bank",
     "Above Only MFB",
@@ -223,18 +267,30 @@ class _TradesState extends State<Trades> {
           }
         }
 
-        // Check for amount in the format <b>23,769.68 NGN</b>
-        RegExp amountRegExp = RegExp(r'<b>([\d,.]+)\s*(\w+)</b>');
-        Match? amountMatch = amountRegExp.firstMatch(text);
-        if (amountMatch != null) {
-          String amount = amountMatch.group(1)!; // Extract the amount
-          String currency = amountMatch.group(2)!; // Extract the currency
+        // Match "You must pay <b>100,000 NGN</b>" format
+        RegExp amountRegExp1 = RegExp(r'you must pay <b>([\d,.]+)\s*(\w+)</b>');
+        Match? amountMatch1 = amountRegExp1.firstMatch(text);
+        if (amountMatch1 != null) {
+          String amount = amountMatch1.group(1)!; // Extract the amount
+          String currency = amountMatch1.group(2)!; // Extract the currency
           print('Amount: $amount $currency');
-          // Return or store the amount and currency as needed
           return {
             'amount': amount,
             'currency': currency,
-            // Add other necessary details as per your message structure
+          };
+        }
+
+        // Match "(137,518.2 NGN) is now in escrow." format
+        RegExp amountRegExp2 =
+            RegExp(r'\(([\d,.]+)\s*(\w+)\) is now in escrow');
+        Match? amountMatch2 = amountRegExp2.firstMatch(text);
+        if (amountMatch2 != null) {
+          String amount = amountMatch2.group(1)!; // Extract the amount
+          String currency = amountMatch2.group(2)!; // Extract the currency
+          print('Amount in escrow: $amount $currency');
+          return {
+            'amount_in_escrow': amount,
+            'currency': currency,
           };
         }
       }
@@ -346,26 +402,123 @@ class _TradesState extends State<Trades> {
                             _checkForBankDetails(messages);
 
                         if (bankDetails != null) {
-                          final bankAccountDetails = '''
-                            Bank Name: ${bankDetails['bank_name']}
-                            Account Number: ${bankDetails['account_number']}
-                          ''';
+                          final bankName = bankDetails['bank_name'] ?? '';
+                          final accountNumber =
+                              bankDetails['account_number'] ?? '';
+                          final amount = bankDetails['amount'] ?? '';
+                          final currency = bankDetails['currency'] ?? '';
 
                           return Container(
-                            padding: EdgeInsets.all(10),
-                            margin: EdgeInsets.symmetric(vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.grey[200],
+                              border: Border.all(width: 0.5),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(bankAccountDetails),
+                            width: MediaQuery.of(context).size.width - 30,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Seller's details",
+                                    style: GoogleFonts.poppins(
+                                        textStyle: TextStyle(
+                                            fontSize: 10.sp,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Account Name :",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        accumulatedAccountHolder ?? 'N/A',
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 5.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Account Number :",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 8.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        accountNumber,
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Bank Name:",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 8.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        bankName,
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Amount:",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 8.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        "$currency $amount",
+                                        style: GoogleFonts.poppins(
+                                            textStyle: TextStyle(
+                                                fontSize: 18.sp,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
-                        } else {
-                          return Center(
-                              child: Text(
-                                  'No bank account instructions available for the latest trade'));
                         }
                       }
+
+//Shared Account
 
                       final bankAccount =
                           bankAccountMessage['text']['bank_account'];
@@ -384,22 +537,19 @@ class _TradesState extends State<Trades> {
 
                       return Column(
                         children: [
-
                           Container(
                             height: 8.h,
-                            width: MediaQuery.of(context).size.width-20,
+                            width: MediaQuery.of(context).size.width - 20,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.blue
-                            ),
+                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.blue),
                             child: Column(
-                              children: [
-                               // Text("Hello")
-
-                              ],
+                              children: [],
                             ),
                           ),
-                          SizedBox(height: 2.h,),
+                          SizedBox(
+                            height: 3.h,
+                          ),
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(width: 0.5),
@@ -429,7 +579,7 @@ class _TradesState extends State<Trades> {
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
                                                 fontSize: 5.sp,
-                                                fontWeight: FontWeight.w600)),
+                                                fontWeight: FontWeight.w700)),
                                       ),
                                       Text(Account_name),
                                     ],
@@ -477,7 +627,6 @@ class _TradesState extends State<Trades> {
                                     ],
                                   ),
                                   Divider(),
-                                  // Text(Amount)
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -490,7 +639,7 @@ class _TradesState extends State<Trades> {
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
-                                        "N${Amount}",
+                                        "${formatNaira(Amount).toString()}",
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
                                                 fontSize: 18.sp,
@@ -502,26 +651,56 @@ class _TradesState extends State<Trades> {
                               ),
                             ),
                           ),
-                          SizedBox(height: 5.h,),
-
+                          SizedBox(
+                            height: 5.h,
+                          ),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                height: 5.h,
-                                width: 20.w,
-                                child: Center(child: Text("To CC",style: GoogleFonts.poppins(),)),
+                                height: 4.h,
+                                width: 30.w,
+                                child: Center(
+                                    child: Text(
+                                  "To CC",
+                                  style:
+                                      GoogleFonts.poppins(color: Colors.white),
+                                )),
                                 decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.white
-                                  )
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.white)),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return ConfirmPayDialog(onConfirm: () {
+                                          _MarkPaid();
+                                          Navigator.pop(context);
+                                        }, onCancel: () {
+                                          Navigator.pop(context);
+                                        });
+                                      });
+                                },
+                                child: Container(
+                                  height: 4.h,
+                                  width: 30.w,
+                                  child: Center(
+                                      child: Text(
+                                    "Mark Paid",
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.black),
+                                  )),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.black)),
                                 ),
                               )
                             ],
                           )
-
-
                         ],
                       );
                     },
@@ -553,7 +732,11 @@ class _TradesState extends State<Trades> {
                                 return Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.chat, size: 40),
+                                      GestureDetector(
+                                          onTap: () {
+                                            _VerifyAccount();
+                                          },
+                                          child: Icon(Icons.chat, size: 40)),
                                       Text("No Messages",
                                           style: GoogleFonts.poppins())
                                     ]);
@@ -607,8 +790,8 @@ class _TradesState extends State<Trades> {
                                     child: Container(
                                       decoration: BoxDecoration(
                                         color: isMine
-                                            ? Colors.blue[200]
-                                            : Colors.grey[200],
+                                            ? Colors.blue[400]
+                                            : Colors.grey[300],
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       padding: EdgeInsets.all(10),
@@ -619,10 +802,8 @@ class _TradesState extends State<Trades> {
                                             ? CrossAxisAlignment.end
                                             : CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            messageText,
-                                            style: TextStyle(fontSize: 16),
-                                          ),
+                                          Text(messageText,
+                                              style: GoogleFonts.poppins()),
                                           SizedBox(height: 5),
                                           Text(
                                             messageTime,
@@ -657,7 +838,7 @@ class _TradesState extends State<Trades> {
                                 mini: true,
                                 //_sendMessage,
                                 //_markAsComplaint,
-                               // _MarkPaid,
+                                // _MarkPaid,
                                 onPressed: _sendMessage,
                                 child: Icon(Icons.send),
                               ),

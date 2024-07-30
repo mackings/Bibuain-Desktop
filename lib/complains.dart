@@ -12,7 +12,7 @@ class AllComplains extends StatefulWidget {
 }
 
 class _AllComplainsState extends State<AllComplains> {
-  
+
   
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
@@ -265,7 +265,9 @@ class _AllComplainsState extends State<AllComplains> {
                                             messageText,
                                             style: TextStyle(fontSize: 16),
                                           ),
+
                                           SizedBox(height: 5),
+
                                           Text(
                                             messageTime,
                                             style: TextStyle(
@@ -296,6 +298,8 @@ class _AllComplainsState extends State<AllComplains> {
       ),
     );
   }
+
+
 
   Widget _buildMessageComposer() {
     return Row(
