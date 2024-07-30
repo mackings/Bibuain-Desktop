@@ -27,11 +27,10 @@ class DefaultFirebaseOptions {
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
-       // return windows;
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for windows - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -45,42 +44,38 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAZWJ-fnF2K7bZf6B1tkPfEgUvlTJnZIAk',
-    appId: '1:1044761303456:web:d39cb2d2bc67753b042cc5',
-    messagingSenderId: '1044761303456',
-    projectId: 'bibuain-de956',
-    authDomain: 'bibuain-de956.firebaseapp.com',
-    storageBucket: 'bibuain-de956.appspot.com',
-    measurementId: 'G-M42TC0DMWX',
+    apiKey: 'AIzaSyCmQn7nyTIiFyeUCqNZjhIOBC2wk5FqHc8',
+    appId: '1:951703786122:web:9c71f65d90efc511a91373',
+    messagingSenderId: '951703786122',
+    projectId: 'fir-13e5a',
+    authDomain: 'fir-13e5a.firebaseapp.com',
+    storageBucket: 'fir-13e5a.appspot.com',
+    measurementId: 'G-0545Y5EVRQ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDrsN002y0Q2MOIX4ojVfW7aQLV9OAcyjw',
-    appId: '1:1044761303456:android:63cabad3490953d1042cc5',
-    messagingSenderId: '1044761303456',
-    projectId: 'bibuain-de956',
-    storageBucket: 'bibuain-de956.appspot.com',
+    apiKey: 'AIzaSyDkzhggeIAaVm9XZM9GssHD0Z2R0YyfpT4',
+    appId: '1:951703786122:android:0d589989a474c189a91373',
+    messagingSenderId: '951703786122',
+    projectId: 'fir-13e5a',
+    storageBucket: 'fir-13e5a.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCXoe80Gpk68QDuNfh3xmapuxhPEfKYrI8',
-    appId: '1:1044761303456:ios:a35da518f05a7830042cc5',
-    messagingSenderId: '1044761303456',
-    projectId: 'bibuain-de956',
-    storageBucket: 'bibuain-de956.appspot.com',
-    iosClientId:
-        '1044761303456-7ohcknsb4ke5satvqrq6e45lnt0dib0n.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDVu9v8cH9uVyqmF8nG9MCEMvGvS8dyn6A',
+    appId: '1:951703786122:ios:514c1935010593dea91373',
+    messagingSenderId: '951703786122',
+    projectId: 'fir-13e5a',
+    storageBucket: 'fir-13e5a.appspot.com',
     iosBundleId: 'com.example.bdesktop',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCXoe80Gpk68QDuNfh3xmapuxhPEfKYrI8',
-    appId: '1:1044761303456:ios:a41b91548ffe803b042cc5',
-    messagingSenderId: '1044761303456',
-    projectId: 'bibuain-de956',
-    storageBucket: 'bibuain-de956.appspot.com',
-    iosClientId:
-        '1044761303456-prp9brls68aib9m09nk3r2v590f2atei.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDVu9v8cH9uVyqmF8nG9MCEMvGvS8dyn6A',
+    appId: '1:951703786122:ios:42a32498a2fad374a91373',
+    messagingSenderId: '951703786122',
+    projectId: 'fir-13e5a',
+    storageBucket: 'fir-13e5a.appspot.com',
     iosBundleId: 'com.example.bdesktop.RunnerTests',
   );
 }

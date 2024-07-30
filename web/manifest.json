@@ -1,6 +1,6 @@
 {
-    "name": "bdesktop",
-    "short_name": "bdesktop",
+    "name": "Demo BB",
+    "short_name": "Demo BB",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
