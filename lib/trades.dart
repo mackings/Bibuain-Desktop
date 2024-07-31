@@ -269,6 +269,11 @@ Map<String, String> bankCodes = {
   String? accumulatedAccountNumber;
   String? accumulatedAccountHolder;
 
+  String? recentAccountNumber;
+String? recentPersonName;
+String? recentBankName;
+
+
 Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
   for (var message in messages) {
     final text = message['text'];
@@ -625,19 +630,48 @@ Expanded(
 
                       final isMine = messageAuthor == myUsername;
 
-                      String messageText;
+                      String messageText = message['text'].toString();
 
-                      if (messageType == 'bank-account-instruction') {
-                        final bankAccount = message['text']['bank_account'];
-                        messageText = '''
-                          Bank Name: ${bankAccount['bank_name']}
-                          Account Number: ${bankAccount['account_number'].toString()}
-                          Holder Name: ${bankAccount['holder_name']}
-                          Amount: ${bankAccount['amount'].toString()}
-                          Currency: ${bankAccount['currency'].toString()}
-                        ''';
-                      } else {
-                        messageText = message['text'].toString();
+                      // Regex to find 10-digit account number
+                      final accountNumberRegex = RegExp(r'\b\d{10}\b');
+                      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
+
+                      // Regex to find names in the format "First Last"
+                      final nameRegex = RegExp(r'\b[A-Z][a-z]+\s[A-Z][a-z]+\b');
+                      final nameMatch = nameRegex.firstMatch(messageText);
+
+                      // Find the bank name from the bankCodes map
+                      String? bankNameMatch;
+                      for (var bankName in bankCodes.keys) {
+                        if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
+                          bankNameMatch = bankName;
+                          break;
+                        }
+                      }
+
+                      if (accountNumberMatch != null) {
+                        recentAccountNumber = accountNumberMatch.group(0)!;
+                      }
+                      if (nameMatch != null) {
+                        recentPersonName = nameMatch.group(0)!;
+                      }
+                      if (bankNameMatch != null) {
+                        recentBankName = bankNameMatch;
+                      }
+
+                      // Print the captured details if available
+                      if (recentAccountNumber != null &&
+                          recentPersonName != null &&
+                          recentBankName != null) {
+                        final bankCode = bankCodes[recentBankName] ?? 'Unknown Code';
+                        print('Account Number: $recentAccountNumber');
+                        print('Person Name: $recentPersonName');
+                        print('Bank Name: $recentBankName');
+                        print('Bank Code: $bankCode');
+                        // Clear recent details after printing
+                        recentAccountNumber = null;
+                        recentPersonName = null;
+                        recentBankName = null;
                       }
 
                       return Align(
@@ -687,6 +721,7 @@ Expanded(
                     ),
                   ),
                   SizedBox(width: 10),
+                  
                   FloatingActionButton(
                     mini: true,
                     onPressed: _sendMessage,
@@ -710,6 +745,9 @@ Expanded(
           ],
         ),
 ),
+
+
+
 
 
 
