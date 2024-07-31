@@ -229,11 +229,13 @@ Map<String, String> bankCodes = {
   "Keystone Bank": "082",
   "Kredi Money MFB LTD": "50211",
   "Kuda Bank": "50211",
+  "Kuda": "50211",
   "Lagos Building Investment Company Plc.": "90052",
   "Links MFB": "50549",
   "Lotus Bank": "303",
   "Mayfair MFB": "50563",
   "Moniepoint MFB": "50515",
+  "Moniepoint": "50515",
   "Mint MFB": "50212",
   "Paga": "100002",
   "PalmPay": "999991",
@@ -272,6 +274,11 @@ Map<String, String> bankCodes = {
   String? recentAccountNumber;
 String? recentPersonName;
 String? recentBankName;
+
+
+  String? recentAccountNumber1;
+String? recentPersonName1;
+String? recentBankName1;
 
 
 Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
@@ -571,7 +578,174 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
             );
           }
 
-          return Center(child: Text('No bank account details found'));
+          return Column(
+              children: [
+                Container(
+                  height: 8.h,
+                  width: MediaQuery.of(context).size.width - 20,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.blue),
+                  child: Column(
+                    children: [],
+                  ),
+                ),
+                SizedBox(
+                  height: 3.h,
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(width: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  width: MediaQuery.of(context).size.width - 30,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Seller's Messsage Details",
+                          style: GoogleFonts.poppins(
+                              textStyle: TextStyle(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        SizedBox(height: 2.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Account Name :",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 5.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            Text(
+                              "${recentPersonName == null? recentPersonName:"N/A"}",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 5.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                        Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Account Number :",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            Text(
+                              '${recentAccountNumber}',
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                        Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Bank Name:",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            Text(
+                              '${recentBankName}',
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                        Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Amount:",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            Text(
+                              "${formatNairas(newamount)}",
+                              style: GoogleFonts.poppins(
+                                  textStyle: TextStyle(
+                                      fontSize: 18.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                      ],          
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 7.h,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      height: 4.h,
+                      width: 30.w,
+                      child: Center(
+                          child: Text(
+                        "To CC",
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      )),
+                      decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white)),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                            context: context,
+                            builder: (context) {
+                              return ConfirmPayDialog(onConfirm: () {
+                                _MarkPaid();
+                                Navigator.pop(context);
+                              }, onCancel: () {
+                                Navigator.pop(context);
+                              });
+                            });
+                      },
+                      child: Container(
+                        height: 4.h,
+                        width: 30.w,
+                        child: Center(
+                            child: Text(
+                          "Mark Paid",
+                          style: GoogleFonts.poppins(color: Colors.black),
+                        )),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.black)),
+                      ),
+                    )
+                  ],
+                )
+              ],
+            );
         },
       );
     },
@@ -668,10 +842,12 @@ Expanded(
                         print('Person Name: $recentPersonName');
                         print('Bank Name: $recentBankName');
                         print('Bank Code: $bankCode');
+
                         // Clear recent details after printing
                         recentAccountNumber = null;
                         recentPersonName = null;
                         recentBankName = null;
+
                       }
 
                       return Align(
@@ -721,7 +897,7 @@ Expanded(
                     ),
                   ),
                   SizedBox(width: 10),
-                  
+
                   FloatingActionButton(
                     mini: true,
                     onPressed: _sendMessage,
