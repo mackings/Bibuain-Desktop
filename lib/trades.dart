@@ -352,7 +352,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     stream: FirebaseFirestore.instance
         .collection('trades')
         .orderBy('timestamp', descending: true)
-        .limit(1) // Limit to the latest trade only
+        .limit(1) // Limit to the latest trade onlys
         .snapshots(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
