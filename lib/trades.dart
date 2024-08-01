@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,98 @@ class _TradesState extends State<Trades> {
 
   String? selectedTradeHash;
   String? lastTradeHash;
+  String? accumulatedBankName;
+  String? accumulatedAccountNumber;
+  String? accumulatedAccountHolder;
+
+  String? recentAccountNumber;
+  String? recentPersonName;
+  String? recentBankName;
+  String? recentBankCode;
+
+  String? recentAccountNumber1;
+  String? recentPersonName1;
+  String? recentBankName1;
+  dynamic fiatAmount;
+
+  Map<String, String> bankCodes = {
+    "Abbey Mortgage Bank": "801",
+    "Above Only MFB": "51226",
+    "Access Bank": "044",
+    "Access": "044",
+    "Access Bank (Diamond)": "063",
+    "ALAT by WEMA": "035A",
+    "Amju Unique MFB": "50926",
+    "ASO Savings and Loans": "401",
+    "Bainescredit MFB": "51229",
+    "Bowen Microfinance Bank": "50931",
+    "Carbon": "565",
+    "CEMCS Microfinance Bank": "50823",
+    "Citibank Nigeria": "023",
+    "Coronation Merchant Bank": "559",
+    "Ecobank Nigeria": "050",
+    "Ekondo Microfinance Bank": "562",
+    "Eyowo": "50126",
+    "Fidelity Bank": "070",
+    "Firmus MFB": "51314",
+    "First Bank of Nigeria": "011",
+    "First Bank": "011",
+    "First City Monument Bank": "214",
+    "FCMB": "214",
+    "FSDH Merchant Bank Limited": "501",
+    "Globus Bank": "00103",
+    "GoMoney": "100022",
+    "Guaranty Trust Bank": "058",
+    "GT Bank": "058",
+    "GT": "058",
+    "Hackman Microfinance Bank": "51233",
+    "Hasal Microfinance Bank": "50383",
+    "Heritage Bank": "030",
+    "Ibile Microfinance Bank": "51244",
+    "Infinity MFB": "50457",
+    "Jaiz Bank": "301",
+    "Kadpoly MFB": "50502",
+    "Keystone Bank": "082",
+    "Kredi Money MFB LTD": "50211",
+    "Kuda Bank": "50211",
+    "Kuda": "50211",
+    "Lagos Building Investment Company Plc.": "90052",
+    "Links MFB": "50549",
+    "Lotus Bank": "303",
+    "Mayfair MFB": "50563",
+    "Moniepoint MFB": "50515",
+    "Moniepoint": "50515",
+    "Mint MFB": "50212",
+    "Paga": "100002",
+    "PalmPay": "999991",
+    "Parallex Bank": "526",
+    "Parkway - ReadyCash": "311",
+    "Opay": "999992",
+    "Petra Microfinance Bank Plc": "50746",
+    "Polaris Bank": "076",
+    "Providus Bank": "101",
+    "QuickFund MFB": "51268",
+    "Rand Merchant Bank": "502",
+    "Rubies MFB": "51318",
+    "Sparkle Microfinance Bank": "51320",
+    "Stanbic IBTC Bank": "221",
+    "Stanbic IBTC": "221",
+    "Standard Chartered Bank": "068",
+    "Sterling Bank": "232",
+    "Suntrust Bank": "100",
+    "TAJ Bank": "302",
+    "Tangerine Money": "51269",
+    "TCF MFB": "51211",
+    "Titan Bank": "102",
+    "Unical MFB": "50855",
+    "Union Bank of Nigeria": "032",
+    "United Bank For Africa": "033",
+    "UBA": "033",
+    "Unity Bank": "215",
+    "VFD Microfinance Bank Limited": "566",
+    "Wema Bank": "035",
+    "Zenith Bank": "057"
+  };
 
   DateTime _convertToDateTime(dynamic timestamp) {
     if (timestamp is Timestamp) {
@@ -33,8 +126,6 @@ class _TradesState extends State<Trades> {
 
   String formatNaira(dynamic amount) {
     double parsedAmount;
-
-    // Check if the input is already a double, if not, try to parse it
     if (amount is double) {
       parsedAmount = amount;
     } else if (amount is String) {
@@ -44,7 +135,6 @@ class _TradesState extends State<Trades> {
           'Input should be a double or a string representing a number');
     }
 
-    // Convert the amount to a string with commas as thousand separators
     String formattedAmount = parsedAmount.toStringAsFixed(2).replaceAllMapped(
           RegExp(r'\B(?=(\d{3})+(?!\d))'),
           (Match match) => ',',
@@ -172,114 +262,35 @@ class _TradesState extends State<Trades> {
     }
   }
 
-  Future<void> _VerifyAccount() async {
-    const String apiUrl =
-        'https://nubapi.com/verify?account_number={3121613812}&bank_code={011}';
-    final String messageText = _messageController.text;
+  Future<void> _verifyAccount(BuildContext context) async {
+    final url = Uri.parse(
+        'https://server-eight-beige.vercel.app/api/wallet/generateBankDetails/$recentAccountNumber/$recentBankCode');
 
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-      );
+      final response = await http.get(url);
+
       if (response.statusCode == 200) {
-        print(response.body);
+        final data = json.decode(response.body);
+        final accountName = data['data']['account_name'];
+        print('Verified >>> : $data');
+
+        // Show SnackBar with the account name
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ' $accountName',
+              style: GoogleFonts.poppins(),
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
       } else {
-        print(response.body);
+        print('Error: ${response.statusCode}');
       }
-    } catch (error) {
-      print(error);
+    } catch (e) {
+      print('Error: $e');
     }
   }
-
-  Map<String, String> bankCodes = {
-    "Abbey Mortgage Bank": "801",
-    "Above Only MFB": "51226",
-    "Access Bank": "044",
-    "Access Bank (Diamond)": "063",
-    "ALAT by WEMA": "035A",
-    "Amju Unique MFB": "50926",
-    "ASO Savings and Loans": "401",
-    "Bainescredit MFB": "51229",
-    "Bowen Microfinance Bank": "50931",
-    "Carbon": "565",
-    "CEMCS Microfinance Bank": "50823",
-    "Citibank Nigeria": "023",
-    "Coronation Merchant Bank": "559",
-    "Ecobank Nigeria": "050",
-    "Ekondo Microfinance Bank": "562",
-    "Eyowo": "50126",
-    "Fidelity Bank": "070",
-    "Firmus MFB": "51314",
-    "First Bank of Nigeria": "011",
-    "First City Monument Bank": "214",
-    "FSDH Merchant Bank Limited": "501",
-    "Globus Bank": "00103",
-    "GoMoney": "100022",
-    "Guaranty Trust Bank": "058",
-    "Hackman Microfinance Bank": "51233",
-    "Hasal Microfinance Bank": "50383",
-    "Heritage Bank": "030",
-    "Ibile Microfinance Bank": "51244",
-    "Infinity MFB": "50457",
-    "Jaiz Bank": "301",
-    "Kadpoly MFB": "50502",
-    "Keystone Bank": "082",
-    "Kredi Money MFB LTD": "50211",
-    "Kuda Bank": "50211",
-    "Kuda": "50211",
-    "Lagos Building Investment Company Plc.": "90052",
-    "Links MFB": "50549",
-    "Lotus Bank": "303",
-    "Mayfair MFB": "50563",
-    "Moniepoint MFB": "50515",
-    "Moniepoint": "50515",
-    "Mint MFB": "50212",
-    "Paga": "100002",
-    "PalmPay": "999991",
-    "Parallex Bank": "526",
-    "Parkway - ReadyCash": "311",
-    "Opay": "999992",
-    "Petra Microfinance Bank Plc": "50746",
-    "Polaris Bank": "076",
-    "Providus Bank": "101",
-    "QuickFund MFB": "51268",
-    "Rand Merchant Bank": "502",
-    "Rubies MFB": "51318",
-    "Sparkle Microfinance Bank": "51320",
-    "Stanbic IBTC Bank": "221",
-    "Standard Chartered Bank": "068",
-    "Sterling Bank": "232",
-    "Suntrust Bank": "100",
-    "TAJ Bank": "302",
-    "Tangerine Money": "51269",
-    "TCF MFB": "51211",
-    "Titan Bank": "102",
-    "Unical MFB": "50855",
-    "Union Bank of Nigeria": "032",
-    "United Bank For Africa": "033",
-    "UBA": "033",
-    "Unity Bank": "215",
-    "VFD Microfinance Bank Limited": "566",
-    "Wema Bank": "035",
-    "Zenith Bank": "057"
-  };
-
-  String? accumulatedBankName;
-  String? accumulatedAccountNumber;
-  String? accumulatedAccountHolder;
-
-  String? recentAccountNumber;
-  String? recentPersonName;
-  String? recentBankName;
-  String? recentBankCode;
-
-
-  String? recentAccountNumber1;
-  String? recentPersonName1;
-  String? recentBankName1;
 
   Map<String, dynamic>? _checkForBankDetails(
       List<Map<String, dynamic>> messages) {
@@ -306,64 +317,63 @@ class _TradesState extends State<Trades> {
     return null;
   }
 
-void _processMessages(List<Map<String, dynamic>> messages) {
-  String? newAccountNumber;
-  String? newPersonName;
-  String? newBankName;
-  String? newBankCode;
+  void _processMessages(List<Map<String, dynamic>> messages) {
+    String? newAccountNumber;
+    String? newPersonName;
+    String? newBankName;
+    String? newBankCode;
 
-  for (var message in messages) {
-    final messageText = message['text'].toString();
+    for (var message in messages) {
+      final messageText = message['text'].toString();
 
-    // Regex to find 10-digit account number
-    final accountNumberRegex = RegExp(r'\b\d{10}\b');
-    final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
+      // Regex to find 10-digit account number
+      final accountNumberRegex = RegExp(r'\b\d{10}\b');
+      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
 
-    // Regex to find names in the format "First Last" or just a single name
-    final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
-    final nameMatch = nameRegex.firstMatch(messageText);
+      // Regex to find names in the format "First Last" or just a single name
+      final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
+      final nameMatch = nameRegex.firstMatch(messageText);
 
-    // Find the bank name from the bankCodes map
-    String? bankNameMatch;
-    for (var bankName in bankCodes.keys) {
-      if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
-        bankNameMatch = bankName;
-        newBankCode = bankCodes[bankName];
-        break;
+      // Find the bank name from the bankCodes map
+      String? bankNameMatch;
+      for (var bankName in bankCodes.keys) {
+        if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
+          bankNameMatch = bankName;
+          newBankCode = bankCodes[bankName];
+          break;
+        }
+      }
+
+      if (accountNumberMatch != null) {
+        newAccountNumber = accountNumberMatch.group(0);
+      }
+      if (nameMatch != null) {
+        newPersonName = nameMatch.group(0);
+      }
+      if (bankNameMatch != null) {
+        newBankName = bankNameMatch;
       }
     }
 
-    if (accountNumberMatch != null) {
-      newAccountNumber = accountNumberMatch.group(0);
-    }
-    if (nameMatch != null) {
-      newPersonName = nameMatch.group(0);
-    }
-    if (bankNameMatch != null) {
-      newBankName = bankNameMatch;
+    if (newAccountNumber != recentAccountNumber ||
+        newPersonName != recentPersonName ||
+        newBankName != recentBankName ||
+        newBankCode != recentBankCode) {
+      setState(() {
+        recentAccountNumber = newAccountNumber;
+        recentPersonName = newPersonName;
+        recentBankName = newBankName;
+        recentBankCode = newBankCode;
+
+        print("Name: >> $recentPersonName");
+        print('Account Nos: >>> $recentAccountNumber');
+        print('Bank: >>>> $recentBankName');
+        print('Bank Code: >>>> $recentBankCode');
+
+        _verifyAccount(context);
+      });
     }
   }
-
-  if (newAccountNumber != recentAccountNumber ||
-      newPersonName != recentPersonName ||
-      newBankName != recentBankName ||
-      newBankCode != recentBankCode) {
-    setState(() {
-      recentAccountNumber = newAccountNumber;
-      recentPersonName = newPersonName;
-      recentBankName = newBankName;
-      recentBankCode = newBankCode;
-
-      print("Name: >> $recentPersonName");
-      print('Account Nos: >>> $recentAccountNumber');
-      print('Bank: >>>> $recentBankName');
-      print('Bank Code: >>>> $recentBankCode');
-    });
-  }
-}
-
-
-  dynamic fiatAmount;
 
   Future<void> _markAsComplaint() async {
     if (selectedTradeHash == null) {
@@ -679,7 +689,7 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    "Seller's Messsage Details",
+                                    "Seller's Chat Details",
                                     style: GoogleFonts.poppins(
                                         textStyle: TextStyle(
                                             fontSize: 10.sp,
@@ -719,7 +729,7 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
-                                        '${recentAccountNumber == null ? "N/A" : recentAccountNumber}',
+                                        '${recentAccountNumber == null ? "Typing..." : recentAccountNumber}',
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
                                                 fontSize: 12.sp,
@@ -740,7 +750,7 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                                 fontWeight: FontWeight.w600)),
                                       ),
                                       Text(
-                                        '${recentBankName}',
+                                        '${recentBankName == null ? 'Typing...' : recentBankName}',
                                         style: GoogleFonts.poppins(
                                             textStyle: TextStyle(
                                                 fontSize: 13.sp,
@@ -779,19 +789,25 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                height: 4.h,
-                                width: 30.w,
-                                child: Center(
-                                    child: Text(
-                                  "To CC",
-                                  style:
-                                      GoogleFonts.poppins(color: Colors.white),
-                                )),
-                                decoration: BoxDecoration(
-                                    color: Colors.black,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: Colors.white)),
+                              GestureDetector(
+                                onTap: ()async {
+                                  final player = AudioPlayer();
+await player.play(UrlSource('https://www.val9ja.com.ng/hottest/rema-hehehe/'));
+                                },
+                                child: Container(
+                                  height: 4.h,
+                                  width: 30.w,
+                                  child: Center(
+                                      child: Text(
+                                    "To CC",
+                                    style:
+                                        GoogleFonts.poppins(color: Colors.white),
+                                  )),
+                                  decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.white)),
+                                ),
                               ),
                               GestureDetector(
                                 onTap: () {
@@ -856,7 +872,7 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                     children: [
                                       GestureDetector(
                                           onTap: () {
-                                            _VerifyAccount();
+                                            // _VerifyAccount();
                                           },
                                           child: Icon(Icons.chat, size: 40)),
                                       Text("No Messages",
@@ -868,7 +884,12 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                   snapshot.data!.data() as Map<String, dynamic>;
                               final messages = List<Map<String, dynamic>>.from(
                                   tradeMessages['messages'] ?? []);
-                              final myUsername = '2minmax_pro';
+                              //final myUsername = '2minmax_pro';
+                              final List<String> myUsername = [
+                                '2minmax_pro',
+                                'Turbopay',
+                                '2minutepay'
+                              ];
                               print(tradeMessages);
 
                               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -882,7 +903,9 @@ void _processMessages(List<Map<String, dynamic>> messages) {
                                   final messageTime = _formatDateTime(
                                       _convertToDateTime(message['timestamp']));
                                   final messageAuthor = message['author'];
-                                  final isMine = messageAuthor == myUsername;
+                                  final isMine =
+                                      myUsername.contains(messageAuthor);
+                                  print('Current User >> $messageAuthor');
 
                                   String messageText;
                                   if (message['text'] is Map<String, dynamic> &&
