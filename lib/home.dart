@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.bar_chart),
                     selectedIcon: Icon(Icons.bar_chart),
-                    label: Text('All Trades',style: GoogleFonts.poppins(
+                    label: Text('Trades',style: GoogleFonts.poppins(
                         fontSize: 9.sp,
                         fontWeight: FontWeight.w600
                         ),),
