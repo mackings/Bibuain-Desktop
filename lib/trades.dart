@@ -158,7 +158,6 @@ class _TradesState extends State<Trades> {
           'Input should be a double or a string representing a number');
     }
 
-    // Convert the amount to a string with commas as thousand separators
     String formattednewAmount =
         parsedAmount.toStringAsFixed(2).replaceAllMapped(
               RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -421,6 +420,7 @@ class _TradesState extends State<Trades> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -431,13 +431,15 @@ class _TradesState extends State<Trades> {
             SizedBox(
               width: 2.w,
             ),
+
+            
             Expanded(
               flex: 4,
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('trades')
                     .orderBy('timestamp', descending: true)
-                    .limit(1) // Limit to the latest trade onlys
+                    .limit(1) 
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -852,6 +854,8 @@ class _TradesState extends State<Trades> {
                 },
               ),
             ),
+
+
             SizedBox(width: 20),
 
 

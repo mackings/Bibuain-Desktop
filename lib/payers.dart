@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/widgets/paid.dart';
@@ -16,6 +17,7 @@ class Payers extends StatefulWidget {
 }
 
 class _PayersState extends State<Payers> {
+
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -169,16 +171,16 @@ class _PayersState extends State<Payers> {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
-  void _autoSelectLatestTrade(List<DocumentSnapshot> trades) {
-    final latestTradeHash =
-        trades.isNotEmpty ? trades.first.get('trade_hash') : null;
-    if (latestTradeHash != lastTradeHash) {
-      setState(() {
-        selectedTradeHash = latestTradeHash;
-        lastTradeHash = latestTradeHash;
-      });
-    }
-  }
+  // void _autoSelectLatestTrade(List<DocumentSnapshot> trades) {
+  //   final latestTradeHash =
+  //       trades.isNotEmpty ? trades.first.get('trade_hash') : null;
+  //   if (latestTradeHash != lastTradeHash) {
+  //     setState(() {
+  //       selectedTradeHash = latestTradeHash;
+  //       lastTradeHash = latestTradeHash;
+  //     });
+  //   }
+  // }
 
   Future<void> _sendMessage() async {
     const String apiUrl =
@@ -418,31 +420,67 @@ class _PayersState extends State<Payers> {
     }
   }
 
-
-
-final String loggedInStaffID = "Toby";
-
-Future<List<String>> getAssignedTrades() async {
-  try {
-    DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-        .collection('staff')
-        .doc(loggedInStaffID)
-        .get();
-
-    if (staffDoc.exists) {
-      List<String> assignedTrades = List<String>.from(staffDoc['assignedTrades']);
-      print('Assigned Trades: $assignedTrades');
-      return assignedTrades;
-    } else {
-      print('Staff document does not exist');
-      return [];
-    }
-  } catch (e) {
-    print('Error fetching assigned trades: $e');
-    return [];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
   }
+
+  final String loggedInStaffID = "Jane";
+
+  late StreamSubscription<DocumentSnapshot> _staffSubscription;
+  late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToStaffChanges();
+  }
+
+void _listenToStaffChanges() {
+  _staffSubscription = FirebaseFirestore.instance
+      .collection('staff')
+      .doc(loggedInStaffID)
+      .snapshots()
+      .listen((staffSnapshot) {
+    if (staffSnapshot.exists) {
+      // Extract the list of assigned trade objects
+      final assignedTrades = List<Map<String, dynamic>>.from(
+        staffSnapshot.data()?['assignedTrades'] ?? [],
+      );
+
+      if (assignedTrades.isNotEmpty) {
+        // Get the latest trade object and extract the trade_hash
+        Map<String, dynamic> latestTrade = assignedTrades.last;
+        String latestTradeHash = latestTrade['trade_hash'];
+
+        setState(() {
+          selectedTradeHash = latestTradeHash;
+        });
+
+        _listenToTradeMessages(latestTradeHash);
+      }
+    }
+  });
 }
 
+void _listenToTradeMessages(String tradeHash) {
+  _tradeMessagesSubscription = FirebaseFirestore.instance
+      .collection('tradeMessages')
+      .doc(tradeHash)
+      .snapshots()
+      .listen((tradeSnapshot) {
+    // Handle the real-time updates of trade messages here
+    // For example, you could update the UI or perform other logic
+  });
+}
+
+
+  @override
+  void dispose() {
+    _staffSubscription.cancel();
+    _tradeMessagesSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -451,432 +489,98 @@ Future<List<String>> getAssignedTrades() async {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 40),
         child: Row(
           children: [
+
             SizedBox(
               width: 2.w,
             ),
-            Expanded(
-              flex: 4,
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('staff')
-                    .where('assignedStaff',
-                        isEqualTo: loggedInStaffID) // Filter by assigned staff
-                    .orderBy('timestamp', descending: true)
-                    .limit(1) // Limit to the latest trade for that staff member
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text('No trades available'));
-                  }
 
-                  final trade = snapshot.data!.docs.first;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _autoSelectLatestTrade([trade]);
-                  });
+Expanded(
+  flex: 4,
+  child: StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('staff')
+        .doc(loggedInStaffID)
+        .snapshots(),
+    builder: (context, staffSnapshot) {
+      if (staffSnapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
+      if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+        return Center(child: Text('No assigned trades'));
+      }
 
-                  final tradeData = trade.data() as Map<String, dynamic>;
-                  final tradeHash = tradeData['trade_hash'] ?? 'N/A';
-                  final newamount = tradeData['fiat_amount_requested'] ?? 'N/A';
-                  final currency = tradeData['fiat_currency_code'] ?? 'N/A';
+      // Update: Extract list of objects
+      final assignedTrades = List<Map<String, dynamic>>.from(
+        staffSnapshot.data!['assignedTrades'] ?? [],
+      );
 
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('tradeMessages')
-                        .doc(tradeHash)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || !snapshot.data!.exists) {
-                        return Center(
-                            child: Text(
-                                'No messages available for the latest trade'));
-                      }
+      // Print all assigned trades
+      print("Assigned trades for $loggedInStaffID: $assignedTrades");
 
-                      final tradeMessages =
-                          snapshot.data!.data() as Map<String, dynamic> ?? {};
-                      final messages = List<Map<String, dynamic>>.from(
-                          tradeMessages['messages'] ?? []);
+      // Check if there are any assigned trades
+      if (assignedTrades.isEmpty) {
+        return Center(child: Text('No trades assigned.'));
+      }
 
-                      Map<String, dynamic>? bankDetails =
-                          _checkForBankDetails(messages);
+      // Get the latest trade object (last element in the list)
+      Map<String, dynamic> latestTrade = assignedTrades.last;
+      String latestTradeHash = latestTrade['trade_hash'];
+      selectedTradeHash = latestTradeHash;
 
-                      if (bankDetails != null) {
-                        final bankName = bankDetails['bank_name'] ?? 'N/A';
-                        final accountNumber =
-                            bankDetails['account_number'] ?? 'N/A';
-                        final accumulatedAccountHolder =
-                            bankDetails['holder_name'] ?? 'N/A';
+      print("Latest trade Hash: $latestTradeHash");
+      print("Selected trade Hash: $selectedTradeHash");
 
-                        return Column(
-                          children: [
-                            Container(
-                              height: 8.h,
-                              width: MediaQuery.of(context).size.width - 20,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: Colors.blue),
-                              child: Column(
-                                children: [],
-                              ),
-                            ),
-                            SizedBox(
-                              height: 3.h,
-                            ),
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(width: 0.5),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              width: MediaQuery.of(context).size.width - 30,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Seller's Details",
-                                      style: GoogleFonts.poppins(
-                                          textStyle: TextStyle(
-                                              fontSize: 10.sp,
-                                              fontWeight: FontWeight.w600)),
-                                    ),
-                                    SizedBox(height: 2.h),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "Account Name :",
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 5.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                        Text(
-                                          accumulatedAccountHolder,
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 5.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                    Divider(),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "Account Number :",
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 8.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                        Text(
-                                          accountNumber,
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                    Divider(),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "Bank Name:",
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 8.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                        Text(
-                                          bankName,
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 13.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                    Divider(),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "Amount:",
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 8.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                        Text(
-                                          "${formatNairas(newamount)}",
-                                          style: GoogleFonts.poppins(
-                                              textStyle: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: 7.h,
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  height: 4.h,
-                                  width: 30.w,
-                                  child: Center(
-                                      child: Text(
-                                    "To CC",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.white),
-                                  )),
-                                  decoration: BoxDecoration(
-                                      color: Colors.black,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.white)),
-                                ),
-                                GestureDetector(
-                                  onTap: () {
-                                    _MarkPaid();
-                                    showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return ConfirmPayDialog(
-                                              onConfirm: () {
-                                            _MarkPaid();
-                                            Navigator.pop(context);
-                                          }, onCancel: () {
-                                            Navigator.pop(context);
-                                          });
-                                        });
-                                  },
-                                  child: Container(
-                                    height: 4.h,
-                                    width: 30.w,
-                                    child: Center(
-                                        child: Text(
-                                      "Mark Paid",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.black),
-                                    )),
-                                    decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border:
-                                            Border.all(color: Colors.black)),
-                                  ),
-                                )
-                              ],
-                            )
-                          ],
-                        );
-                      }
+      return StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tradeMessages')
+            .doc(latestTradeHash)
+            .snapshots(),
+        builder: (context, tradeSnapshot) {
+          if (tradeSnapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
+            return Center(
+              child: Text('No messages available for the latest trade'),
+            );
+          }
 
-                      return Column(
-                        children: [
-                          Container(
-                            height: 8.h,
-                            width: MediaQuery.of(context).size.width - 20,
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                color: Colors.blue),
-                            child: Column(
-                              children: [],
-                            ),
-                          ),
-                          SizedBox(
-                            height: 3.h,
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(width: 0.5),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            width: MediaQuery.of(context).size.width - 30,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    "Seller's Chat Details",
-                                    style: GoogleFonts.poppins(
-                                        textStyle: TextStyle(
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.w600)),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Account Name :",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 5.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                      Text(
-                                        "${recentPersonName == null ? "N/A" : recentPersonName}",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 5.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                    ],
-                                  ),
-                                  Divider(),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Account Number :",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 8.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                      Text(
-                                        '${recentAccountNumber == null ? "Typing..." : recentAccountNumber}',
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 12.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                    ],
-                                  ),
-                                  Divider(),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Bank Name:",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 8.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                      Text(
-                                        '${recentBankName == null ? 'Typing...' : recentBankName}',
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                    ],
-                                  ),
-                                  Divider(),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Amount:",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 8.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                      Text(
-                                        "${formatNairas(newamount)}",
-                                        style: GoogleFonts.poppins(
-                                            textStyle: TextStyle(
-                                                fontSize: 18.sp,
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            height: 7.h,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              GestureDetector(
-                                onTap: () async {
-                                  final player = AudioPlayer();
-                                  await player.play(UrlSource(
-                                      'https://www.val9ja.com.ng/hottest/rema-hehehe/'));
-                                },
-                                child: Container(
-                                  height: 4.h,
-                                  width: 30.w,
-                                  child: Center(
-                                      child: Text(
-                                    "To CC",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.white),
-                                  )),
-                                  decoration: BoxDecoration(
-                                      color: Colors.black,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.white)),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return ConfirmPayDialog(onConfirm: () {
-                                          _MarkPaid();
-                                          Navigator.pop(context);
-                                        }, onCancel: () {
-                                          Navigator.pop(context);
-                                        });
-                                      });
-                                },
-                                child: Container(
-                                  height: 4.h,
-                                  width: 30.w,
-                                  child: Center(
-                                      child: Text(
-                                    "Mark Paid",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black),
-                                  )),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.black)),
-                                ),
-                              )
-                            ],
-                          )
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
+          final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+
+          Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
+
+          if (bankDetails != null) {
+            final bankName = bankDetails['bank_name'] ?? 'N/A';
+            final accountNumber = bankDetails['account_number'] ?? 'N/A';
+            final accountHolder = bankDetails['holder_name'] ?? 'N/A';
+            final amount = latestTrade['fiat_amount_requested'] ?? 'N/A';
+
+            print('Bank Details: $bankDetails');
+
+            return _buildSellerDetailsUI(
+              context,
+              accountHolder,
+              accountNumber,
+              bankName,
+              amount,
+            );
+          }
+
+          return _buildSellerChatDetailsUI(
+            context,
+            recentPersonName,
+            recentAccountNumber,
+            recentBankName,
+            latestTrade['fiat_amount_requested'] ?? 'N/A',
+          );
+        },
+      );
+    },
+  ),
+),
+
+
 
             SizedBox(width: 20),
 
@@ -924,7 +628,9 @@ Future<List<String>> getAssignedTrades() async {
                                 'Turbopay',
                                 '2minutepay'
                               ];
-                              print(tradeMessages);
+                              //print(tradeMessages);
+
+                              print('Selected Trade Hash $selectedTradeHash');
 
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 _processMessages(messages);
@@ -1035,4 +741,173 @@ Future<List<String>> getAssignedTrades() async {
       ),
     );
   }
+}
+
+Widget _buildSellerDetailsUI(BuildContext context, String accountHolder,
+    String accountNumber, String bankName, String amount) {
+  return Column(
+    children: [
+      _buildHeaderContainer(context),
+      SizedBox(height: 3.h),
+      _buildDetailsContainer(
+          context, accountHolder, accountNumber, bankName, amount,
+          isChatDetails: false),
+      SizedBox(height: 7.h),
+      _buildFooterButtons(context),
+    ],
+  );
+}
+
+Widget _buildSellerChatDetailsUI(BuildContext context, String? personName,
+    String? accountNumber, String? bankName, String amount) {
+  return Column(
+    children: [
+      _buildHeaderContainer(context),
+      SizedBox(height: 3.h),
+      _buildDetailsContainer(context, personName ?? 'N/A',
+          accountNumber ?? 'Typing...', bankName ?? 'Typing...', 
+          amount,
+          isChatDetails: true),
+      SizedBox(height: 7.h),
+      _buildFooterButtons(context),
+    ],
+  );
+}
+
+Widget _buildHeaderContainer(BuildContext context) {
+  return Container(
+    height: 8.h,
+    width: MediaQuery.of(context).size.width - 20,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      color: Colors.blue,
+    ),
+  );
+}
+
+Widget _buildDetailsContainer(BuildContext context, String accountHolder,
+    String accountNumber, String bankName, String amount,
+    {required bool isChatDetails}) {
+  return Container(
+    decoration: BoxDecoration(
+      border: Border.all(width: 0.5),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    width: MediaQuery.of(context).size.width - 30,
+    child: Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            isChatDetails ? "Seller's Chat Details" : "Seller's Details",
+            style: GoogleFonts.poppins(
+              textStyle:
+                  TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+          SizedBox(height: 2.h),
+          _buildDetailRow('Account Name :', accountHolder, 5.sp),
+          Divider(),
+          _buildDetailRow('Account Number :', accountNumber, 8.sp),
+          Divider(),
+          _buildDetailRow('Bank Name:', bankName, 8.sp),
+          Divider(),
+          _buildDetailRow('Amounts:', formatNairas(amount), 18.sp),
+        ],
+      )
+    ),
+  );
+}
+
+Widget _buildDetailRow(String title, String value, double textSize) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        title,
+        style: GoogleFonts.poppins(
+            textStyle:
+                TextStyle(fontSize: textSize, fontWeight: FontWeight.w600)),
+      ),
+      Text(
+        value,
+        style: GoogleFonts.poppins(
+            textStyle:
+                TextStyle(fontSize: textSize, fontWeight: FontWeight.w600)),
+      ),
+    ],
+  );
+}
+
+Widget _buildFooterButtons(BuildContext context) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      GestureDetector(
+        onTap: () async {
+          final player = AudioPlayer();
+          await player.play(
+              UrlSource('https://www.val9ja.com.ng/hottest/rema-hehehe/'));
+        },
+        child: _buildFooterButton(context, "To CC", Colors.black, Colors.white),
+      ),
+      GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return ConfirmPayDialog(onConfirm: () {
+                // _MarkPaid();
+                Navigator.pop(context);
+              }, onCancel: () {
+                Navigator.pop(context);
+              });
+            },
+          );
+        },
+        child: _buildFooterButton(
+            context, "Mark Paid", Colors.white, Colors.black),
+      ),
+    ],
+  );
+}
+
+Widget _buildFooterButton(
+    BuildContext context, String text, Color bgColor, Color textColor) {
+  return Container(
+    height: 4.h,
+    width: 30.w,
+    child: Center(
+      child: Text(
+        text,
+        style: GoogleFonts.poppins(color: textColor),
+      ),
+    ),
+    decoration: BoxDecoration(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: textColor),
+    ),
+  );
+}
+
+String formatNairas(dynamic newamount) {
+  double parsedAmount;
+  if (newamount is double) {
+    parsedAmount = newamount;
+  } else if (newamount is String) {
+    parsedAmount = double.tryParse(newamount) ?? 0.0;
+  } else {
+    throw ArgumentError(
+        'Input should be a double or a string representing a number');
+  }
+
+  // Convert the amount to a string with commas as thousand separators
+  String formattednewAmount = parsedAmount.toStringAsFixed(2).replaceAllMapped(
+        RegExp(r'\B(?=(\d{3})+(?!\d))'),
+        (Match match) => ',',
+      );
+  return '₦$formattednewAmount';
 }
