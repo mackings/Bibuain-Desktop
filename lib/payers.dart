@@ -425,7 +425,7 @@ class _PayersState extends State<Payers> {
     super.didChangeDependencies();
   }
 
-  final String loggedInStaffID = "Jane";
+  final String loggedInStaffID = "Macs";
 
   late StreamSubscription<DocumentSnapshot> _staffSubscription;
   late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
@@ -469,8 +469,37 @@ void _listenToTradeMessages(String tradeHash) {
       .doc(tradeHash)
       .snapshots()
       .listen((tradeSnapshot) {
-    // Handle the real-time updates of trade messages here
-    // For example, you could update the UI or perform other logic
+  });
+}
+
+Timer? _countdownTimer;
+int _remainingSeconds = 60; // 1 minute
+
+void _startCountdown() {
+  // Reset timer if a new trade comes in
+  if (_countdownTimer != null) {
+    _countdownTimer!.cancel();
+  }
+
+  setState(() {
+    _remainingSeconds = 60;
+  });
+
+  _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    if (_remainingSeconds > 0) {
+      setState(() {
+        _remainingSeconds--;
+      });
+    } else {
+      _countdownTimer!.cancel();
+    }
+  });
+}
+
+void _stopCountdown() {
+  _countdownTimer?.cancel();
+  setState(() {
+    _remainingSeconds = 60; // Reset to 1 minute
   });
 }
 
@@ -509,7 +538,6 @@ Expanded(
         return Center(child: Text('No assigned trades'));
       }
 
-      // Update: Extract list of objects
       final assignedTrades = List<Map<String, dynamic>>.from(
         staffSnapshot.data!['assignedTrades'] ?? [],
       );
@@ -699,6 +727,7 @@ Expanded(
                             },
                           ),
                         ),
+
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -721,6 +750,8 @@ Expanded(
                             ],
                           ),
                         ),
+
+
                         if (_responseMessage.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
