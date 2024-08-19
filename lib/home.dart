@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:bdesktop/alltrades.dart';
 import 'package:bdesktop/complains.dart';
+import 'package:bdesktop/payers.dart';
 import 'package:bdesktop/trades.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Trades(),
     AllComplains(),
     AllTrades(),
-    Center(child: Text('Settings Page')),
+    Payers()
   ];
 
   void _onItemTapped(int index) {
@@ -106,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.settings),
                     selectedIcon: Icon(Icons.person),
-                    label: Text('Settings',style: GoogleFonts.poppins(
+                    label: Text('Payers',style: GoogleFonts.poppins(
                         fontSize: 9.sp,
                         fontWeight: FontWeight.w600
                         ),),

@@ -8,14 +8,14 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
 
-class Trades extends StatefulWidget {
-  const Trades({Key? key}) : super(key: key);
+class Payers extends StatefulWidget {
+  const Payers({Key? key}) : super(key: key);
 
   @override
-  State<Trades> createState() => _TradesState();
+  State<Payers> createState() => _PayersState();
 }
 
-class _TradesState extends State<Trades> {
+class _PayersState extends State<Payers> {
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -36,7 +36,6 @@ class _TradesState extends State<Trades> {
   dynamic fiatAmount;
 
   Map<String, String> bankCodes = {
-
     "Abbey Mortgage Bank": "801",
     "Above Only MFB": "51226",
     "Access Bank": "044",
@@ -117,7 +116,6 @@ class _TradesState extends State<Trades> {
     "Wema Bank": "035",
     "Zenith Bank": "057"
   };
-
 
   DateTime _convertToDateTime(dynamic timestamp) {
     if (timestamp is Timestamp) {
@@ -200,7 +198,6 @@ class _TradesState extends State<Trades> {
       );
 
       if (response.statusCode == 200) {
-    
         final messageData = {
           'author': '2minmax_pro',
           'text': messageText,
@@ -421,6 +418,32 @@ class _TradesState extends State<Trades> {
     }
   }
 
+
+
+final String loggedInStaffID = "MacsID";
+
+Future<List<String>> getAssignedTrades() async {
+  try {
+    DocumentSnapshot staffDoc = await FirebaseFirestore.instance
+        .collection('staff')
+        .doc(loggedInStaffID)
+        .get();
+
+    if (staffDoc.exists) {
+      List<String> assignedTrades = List<String>.from(staffDoc['assignedTrades']);
+      print('Assigned Trades: $assignedTrades');
+      return assignedTrades;
+    } else {
+      print('Staff document does not exist');
+      return [];
+    }
+  } catch (e) {
+    print('Error fetching assigned trades: $e');
+    return [];
+  }
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -435,9 +458,11 @@ class _TradesState extends State<Trades> {
               flex: 4,
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('trades')
+                    .collection('staff')
+                    .where('assignedStaff',
+                        isEqualTo: loggedInStaffID) // Filter by assigned staff
                     .orderBy('timestamp', descending: true)
-                    .limit(1) // Limit to the latest trade onlys
+                    .limit(1) // Limit to the latest trade for that staff member
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -852,8 +877,8 @@ class _TradesState extends State<Trades> {
                 },
               ),
             ),
-            SizedBox(width: 20),
 
+            SizedBox(width: 20),
 
             Expanded(
               flex: 3,
@@ -892,7 +917,7 @@ class _TradesState extends State<Trades> {
                                   snapshot.data!.data() as Map<String, dynamic>;
                               final messages = List<Map<String, dynamic>>.from(
                                   tradeMessages['messages']);
-                                  // tradeMessages['messages'] ?? []);
+                              // tradeMessages['messages'] ?? []);
                               //final myUsername = '2minmax_pro';
                               final List<String> myUsername = [
                                 '2minmax_pro',
