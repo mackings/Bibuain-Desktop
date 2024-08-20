@@ -472,36 +472,7 @@ void _listenToTradeMessages(String tradeHash) {
   });
 }
 
-Timer? _countdownTimer;
-int _remainingSeconds = 60; // 1 minute
 
-void _startCountdown() {
-  // Reset timer if a new trade comes in
-  if (_countdownTimer != null) {
-    _countdownTimer!.cancel();
-  }
-
-  setState(() {
-    _remainingSeconds = 60;
-  });
-
-  _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-    if (_remainingSeconds > 0) {
-      setState(() {
-        _remainingSeconds--;
-      });
-    } else {
-      _countdownTimer!.cancel();
-    }
-  });
-}
-
-void _stopCountdown() {
-  _countdownTimer?.cancel();
-  setState(() {
-    _remainingSeconds = 60; // Reset to 1 minute
-  });
-}
 
 
   @override
@@ -535,7 +506,12 @@ Expanded(
         return Center(child: CircularProgressIndicator());
       }
       if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-        return Center(child: Text('No assigned trades'));
+        return Center(child: Column(
+          children: [
+            Icon(Icons.person,size: 50,color: Colors.blue,),
+            Text('No assigned trades'),
+          ],
+        ));
       }
 
       final assignedTrades = List<Map<String, dynamic>>.from(
@@ -547,7 +523,9 @@ Expanded(
 
       // Check if there are any assigned trades
       if (assignedTrades.isEmpty) {
-        return Center(child: Text('No trades assigned.'));
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Text('No trades assigned.'));
       }
 
       // Get the latest trade object (last element in the list)
@@ -615,7 +593,7 @@ Expanded(
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
-                  ? Center(child: Text('No trade selected'))
+                  ? Center(child: Text(''))
                   : Column(
                       children: [
                         Expanded(
