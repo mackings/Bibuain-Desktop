@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/widgets/paid.dart';
+import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -158,7 +159,6 @@ class _PayersState extends State<Payers> {
           'Input should be a double or a string representing a number');
     }
 
-    // Convert the amount to a string with commas as thousand separators
     String formattednewAmount =
         parsedAmount.toStringAsFixed(2).replaceAllMapped(
               RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -425,11 +425,61 @@ class _PayersState extends State<Payers> {
     super.didChangeDependencies();
   }
 
-  final String loggedInStaffID = "Macs";
+  final String loggedInStaffID = "Jane";
 
   late StreamSubscription<DocumentSnapshot> _staffSubscription;
   late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
 
+  late Timer _timer;
+  int _remainingTime = 60; // 60 seconds
+  double _progressValue = 1.0;
+  
+
+
+
+  void _startTimer() {
+    _remainingTime = 60;
+    _progressValue = 1.0;
+
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+          _progressValue = _remainingTime / 60;
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          selectedTradeHash = null; // Clear the trade to fetch the next one
+        });
+      }
+    });
+  }
+
+
+  void _removeCurrentTrade() async {
+    String currentTradeHash = selectedTradeHash!;
+    DocumentReference staffRef = FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot staffSnapshot = await transaction.get(staffRef);
+
+      if (staffSnapshot.exists) {
+        List<Map<String, dynamic>> assignedTrades = List<Map<String, dynamic>>.from(staffSnapshot['assignedTrades'] ?? []);
+        assignedTrades.removeWhere((trade) => trade['trade_hash'] == currentTradeHash);
+        transaction.update(staffRef, {'assignedTrades': assignedTrades});
+      }
+    });
+
+    setState(() {
+      _remainingTime = 60;
+    });
+  }
+
+  ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
+  void _onCountdownComplete() {
+    currentTradeNotifier.value = null; 
+  }
   @override
   void initState() {
     super.initState();
@@ -473,12 +523,12 @@ void _listenToTradeMessages(String tradeHash) {
 }
 
 
-
-
   @override
   void dispose() {
     _staffSubscription.cancel();
     _tradeMessagesSubscription.cancel();
+    _timer?.cancel(); 
+    currentTradeNotifier.dispose();
     super.dispose();
   }
 
@@ -489,107 +539,122 @@ void _listenToTradeMessages(String tradeHash) {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 40),
         child: Row(
           children: [
-
+      
             SizedBox(
               width: 2.w,
             ),
 
+      
 Expanded(
-  flex: 4,
-  child: StreamBuilder<DocumentSnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('staff')
-        .doc(loggedInStaffID)
-        .snapshots(),
-    builder: (context, staffSnapshot) {
-      if (staffSnapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
-      if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-        return Center(child: Column(
-          children: [
-            Icon(Icons.person,size: 50,color: Colors.blue,),
-            Text('No assigned trades'),
-          ],
-        ));
-      }
-
-      final assignedTrades = List<Map<String, dynamic>>.from(
-        staffSnapshot.data!['assignedTrades'] ?? [],
-      );
-
-      // Print all assigned trades
-      print("Assigned trades for $loggedInStaffID: $assignedTrades");
-
-      // Check if there are any assigned trades
-      if (assignedTrades.isEmpty) {
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Text('No trades assigned.'));
-      }
-
-      // Get the latest trade object (last element in the list)
-      Map<String, dynamic> latestTrade = assignedTrades.last;
-      String latestTradeHash = latestTrade['trade_hash'];
-      selectedTradeHash = latestTradeHash;
-
-      print("Latest trade Hash: $latestTradeHash");
-      print("Selected trade Hash: $selectedTradeHash");
-
-      return StreamBuilder<DocumentSnapshot>(
+      flex: 4,
+      child: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('tradeMessages')
-            .doc(latestTradeHash)
+            .collection('staff')
+            .doc(loggedInStaffID)
             .snapshots(),
-        builder: (context, tradeSnapshot) {
-          if (tradeSnapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, staffSnapshot) {
+          if (staffSnapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
-          if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
-            return Center(
-              child: Text('No messages available for the latest trade'),
-            );
+          if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+            return Center(child: Text('No assigned trades'));
           }
 
-          final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+          final assignedTrades = List<Map<String, dynamic>>.from(
+            staffSnapshot.data!['assignedTrades'] ?? [],
+          );
 
-          Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
-
-          if (bankDetails != null) {
-            final bankName = bankDetails['bank_name'] ?? 'N/A';
-            final accountNumber = bankDetails['account_number'] ?? 'N/A';
-            final accountHolder = bankDetails['holder_name'] ?? 'N/A';
-            final amount = latestTrade['fiat_amount_requested'] ?? 'N/A';
-
-            print('Bank Details: $bankDetails');
-
-            return _buildSellerDetailsUI(
-              context,
-              accountHolder,
-              accountNumber,
-              bankName,
-              amount,
-            );
+          if (assignedTrades.isEmpty) {
+            return Center(child: Text('No trades assigned.'));
           }
 
-          return _buildSellerChatDetailsUI(
-            context,
-            recentPersonName,
-            recentAccountNumber,
-            recentBankName,
-            latestTrade['fiat_amount_requested'] ?? 'N/A',
+          Map<String, dynamic> latestTrade = assignedTrades.last;
+          String latestTradeHash = latestTrade['trade_hash'];
+
+          // If a new trade is detected, update the UI after the current frame is complete
+          if (selectedTradeHash != latestTradeHash) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() {
+                selectedTradeHash = latestTradeHash;
+              });
+            });
+          }
+
+          if (selectedTradeHash == null) {
+            return Center(child: Text('No trade currently displayed.'));
+          }
+
+          return StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('tradeMessages')
+                .doc(selectedTradeHash)
+                .snapshots(),
+            builder: (context, tradeSnapshot) {
+              if (tradeSnapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+              if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
+                return Center(child: Text('No messages available for the latest trade'));
+              }
+
+              final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+              final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+
+              Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
+
+              return Column(
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: CircularCountDownTimer(
+                        width: 30,
+                        height: 30,
+                        duration: 10,
+                        fillColor: Colors.black,
+                        ringColor: Colors.blue,
+                        onComplete: () {
+                          // Clear the current trade when countdown is complete
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            setState(() {
+                              selectedTradeHash = null;
+                            });
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  if (bankDetails != null)
+                    _buildSellerDetailsUI(
+                      context,
+                      bankDetails['holder_name'] ?? 'N/A',
+                      bankDetails['account_number'] ?? 'N/A',
+                      bankDetails['bank_name'] ?? 'N/A',
+                      latestTrade['fiat_amount_requested'] ?? 'N/A',
+                    )
+                  else
+                    _buildSellerChatDetailsUI(
+                      context,
+                      recentPersonName,
+                      recentAccountNumber,
+                      recentBankName,
+                      latestTrade['fiat_amount_requested'] ?? 'N/A',
+                    ),
+                  _buildFooterButton(context, "Mark Paid", Colors.white, Colors.black),
+                ],
+              );
+            },
           );
         },
-      );
-    },
-  ),
-),
+      ),
+    ),
 
 
 
+      
             SizedBox(width: 20),
-
+      
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -622,7 +687,7 @@ Expanded(
                                           style: GoogleFonts.poppins())
                                     ]);
                               }
-
+      
                               final tradeMessages =
                                   snapshot.data!.data() as Map<String, dynamic>;
                               final messages = List<Map<String, dynamic>>.from(
@@ -635,13 +700,13 @@ Expanded(
                                 '2minutepay'
                               ];
                               //print(tradeMessages);
-
+      
                               print('Selected Trade Hash $selectedTradeHash');
-
+      
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 _processMessages(messages);
                               });
-
+      
                               return ListView.builder(
                                 itemCount: messages.length,
                                 itemBuilder: (context, index) {
@@ -652,7 +717,7 @@ Expanded(
                                   final isMine =
                                       myUsername.contains(messageAuthor);
                                   print('Current User >> $messageAuthor');
-
+      
                                   String messageText;
                                   if (message['text'] is Map<String, dynamic> &&
                                       message['text']
@@ -667,7 +732,7 @@ Expanded(
                                   } else {
                                     messageText = message['text'].toString();
                                   }
-
+      
                                   return Align(
                                     alignment: isMine
                                         ? Alignment.centerRight
@@ -705,7 +770,7 @@ Expanded(
                             },
                           ),
                         ),
-
+      
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -728,8 +793,8 @@ Expanded(
                             ],
                           ),
                         ),
-
-
+      
+      
                         if (_responseMessage.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -744,7 +809,8 @@ Expanded(
                           ),
                       ],
                     ),
-            )
+            ),
+      
           ],
         ),
       ),
