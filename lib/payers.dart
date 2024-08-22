@@ -18,7 +18,6 @@ class Payers extends StatefulWidget {
 }
 
 class _PayersState extends State<Payers> {
-
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -429,13 +428,12 @@ class _PayersState extends State<Payers> {
 
   late StreamSubscription<DocumentSnapshot> _staffSubscription;
   late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
+  final Countdown = CountDownController();
 
   late Timer _timer;
   int _remainingTime = 60; // 60 seconds
   double _progressValue = 1.0;
-  
-
-
+  bool countdownComplete = false;
 
   void _startTimer() {
     _remainingTime = 60;
@@ -456,17 +454,20 @@ class _PayersState extends State<Payers> {
     });
   }
 
-
   void _removeCurrentTrade() async {
     String currentTradeHash = selectedTradeHash!;
-    DocumentReference staffRef = FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
+    DocumentReference staffRef =
+        FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       DocumentSnapshot staffSnapshot = await transaction.get(staffRef);
 
       if (staffSnapshot.exists) {
-        List<Map<String, dynamic>> assignedTrades = List<Map<String, dynamic>>.from(staffSnapshot['assignedTrades'] ?? []);
-        assignedTrades.removeWhere((trade) => trade['trade_hash'] == currentTradeHash);
+        List<Map<String, dynamic>> assignedTrades =
+            List<Map<String, dynamic>>.from(
+                staffSnapshot['assignedTrades'] ?? []);
+        assignedTrades
+            .removeWhere((trade) => trade['trade_hash'] == currentTradeHash);
         transaction.update(staffRef, {'assignedTrades': assignedTrades});
       }
     });
@@ -478,56 +479,55 @@ class _PayersState extends State<Payers> {
 
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
-    currentTradeNotifier.value = null; 
+    currentTradeNotifier.value = null;
   }
+
   @override
   void initState() {
     super.initState();
     _listenToStaffChanges();
   }
 
-void _listenToStaffChanges() {
-  _staffSubscription = FirebaseFirestore.instance
-      .collection('staff')
-      .doc(loggedInStaffID)
-      .snapshots()
-      .listen((staffSnapshot) {
-    if (staffSnapshot.exists) {
-      // Extract the list of assigned trade objects
-      final assignedTrades = List<Map<String, dynamic>>.from(
-        staffSnapshot.data()?['assignedTrades'] ?? [],
-      );
+  void _listenToStaffChanges() {
+    _staffSubscription = FirebaseFirestore.instance
+        .collection('staff')
+        .doc(loggedInStaffID)
+        .snapshots()
+        .listen((staffSnapshot) {
+      if (staffSnapshot.exists) {
+        // Extract the list of assigned trade objects
+        final assignedTrades = List<Map<String, dynamic>>.from(
+          staffSnapshot.data()?['assignedTrades'] ?? [],
+        );
 
-      if (assignedTrades.isNotEmpty) {
-        // Get the latest trade object and extract the trade_hash
-        Map<String, dynamic> latestTrade = assignedTrades.last;
-        String latestTradeHash = latestTrade['trade_hash'];
+        if (assignedTrades.isNotEmpty) {
+          // Get the latest trade object and extract the trade_hash
+          Map<String, dynamic> latestTrade = assignedTrades.last;
+          String latestTradeHash = latestTrade['trade_hash'];
 
-        setState(() {
-          selectedTradeHash = latestTradeHash;
-        });
+          setState(() {
+            selectedTradeHash = latestTradeHash;
+          });
 
-        _listenToTradeMessages(latestTradeHash);
+          _listenToTradeMessages(latestTradeHash);
+        }
       }
-    }
-  });
-}
+    });
+  }
 
-void _listenToTradeMessages(String tradeHash) {
-  _tradeMessagesSubscription = FirebaseFirestore.instance
-      .collection('tradeMessages')
-      .doc(tradeHash)
-      .snapshots()
-      .listen((tradeSnapshot) {
-  });
-}
-
+  void _listenToTradeMessages(String tradeHash) {
+    _tradeMessagesSubscription = FirebaseFirestore.instance
+        .collection('tradeMessages')
+        .doc(tradeHash)
+        .snapshots()
+        .listen((tradeSnapshot) {});
+  }
 
   @override
   void dispose() {
     _staffSubscription.cancel();
     _tradeMessagesSubscription.cancel();
-    _timer?.cancel(); 
+    _timer?.cancel();
     currentTradeNotifier.dispose();
     super.dispose();
   }
@@ -536,125 +536,155 @@ void _listenToTradeMessages(String tradeHash) {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 40),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
         child: Row(
           children: [
-      
             SizedBox(
               width: 2.w,
             ),
 
-      
-Expanded(
-      flex: 4,
-      child: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .snapshots(),
-        builder: (context, staffSnapshot) {
-          if (staffSnapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-            return Center(child: Text('No assigned trades'));
-          }
+            Expanded(
+              flex: 4,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('staff')
+                    .doc(loggedInStaffID)
+                    .snapshots(),
+                builder: (context, staffSnapshot) {
+                  if (staffSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+                    return Center(child: Text('No assigned trades'));
+                  }
 
-          final assignedTrades = List<Map<String, dynamic>>.from(
-            staffSnapshot.data!['assignedTrades'] ?? [],
-          );
+                  final assignedTrades = List<Map<String, dynamic>>.from(
+                    staffSnapshot.data!['assignedTrades'] ?? [],
+                  );
 
-          if (assignedTrades.isEmpty) {
-            return Center(child: Text('No trades assigned.'));
-          }
+                  if (assignedTrades.isEmpty) {
+                    return Center(child: Text('No trades assigned.'));
+                  }
 
-          Map<String, dynamic> latestTrade = assignedTrades.last;
-          String latestTradeHash = latestTrade['trade_hash'];
+                  Map<String, dynamic> latestTrade = assignedTrades.last;
+                  String latestTradeHash = latestTrade['trade_hash'];
 
-          // If a new trade is detected, update the UI after the current frame is complete
-          if (selectedTradeHash != latestTradeHash) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              setState(() {
-                selectedTradeHash = latestTradeHash;
-              });
-            });
-          }
+if (selectedTradeHash == null || selectedTradeHash != latestTradeHash) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      setState(() {
+        selectedTradeHash = latestTradeHash;
+        countdownComplete = false;  // Reset countdown complete status to show the new trade
+      });
+    }
+  });
+}
 
-          if (selectedTradeHash == null) {
-            return Center(child: Text('No trade currently displayed.'));
-          }
+if (countdownComplete || selectedTradeHash == null) {
+  return Center(child: Text('No trade currently displayed.'));
+}
 
-          return StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('tradeMessages')
-                .doc(selectedTradeHash)
-                .snapshots(),
-            builder: (context, tradeSnapshot) {
-              if (tradeSnapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              }
-              if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
-                return Center(child: Text('No messages available for the latest trade'));
-              }
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('tradeMessages')
+                        .doc(selectedTradeHash)
+                        .snapshots(),
+                    builder: (context, tradeSnapshot) {
+                      if (tradeSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (!tradeSnapshot.hasData ||
+                          !tradeSnapshot.data!.exists) {
+                        return Center(
+                            child: Text(
+                                'No messages available for the latest trade'));
+                      }
 
-              final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-              final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+                      final tradeMessages =
+                          tradeSnapshot.data!.data() as Map<String, dynamic>? ??
+                              {};
+                      final messages = List<Map<String, dynamic>>.from(
+                          tradeMessages['messages'] ?? []);
 
-              Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
+                      Map<String, dynamic>? bankDetails =
+                          _checkForBankDetails(messages);
 
-              return Column(
-                children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: CircularCountDownTimer(
-                        width: 30,
-                        height: 30,
-                        duration: 10,
-                        fillColor: Colors.black,
-                        ringColor: Colors.blue,
-                        onComplete: () {
-                          // Clear the current trade when countdown is complete
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setState(() {
-                              selectedTradeHash = null;
-                            });
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  if (bankDetails != null)
-                    _buildSellerDetailsUI(
-                      context,
-                      bankDetails['holder_name'] ?? 'N/A',
-                      bankDetails['account_number'] ?? 'N/A',
-                      bankDetails['bank_name'] ?? 'N/A',
-                      latestTrade['fiat_amount_requested'] ?? 'N/A',
-                    )
-                  else
-                    _buildSellerChatDetailsUI(
-                      context,
-                      recentPersonName,
-                      recentAccountNumber,
-                      recentBankName,
-                      latestTrade['fiat_amount_requested'] ?? 'N/A',
-                    ),
-                  _buildFooterButton(context, "Mark Paid", Colors.white, Colors.black),
-                ],
-              );
-            },
-          );
-        },
-      ),
-    ),
+                      return Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: CircularCountDownTimer(
+                                key: ValueKey(selectedTradeHash),
+                                width: 30,
+                                height: 30,
+                                duration: 5,
+                                fillColor: Colors.black,
+                                ringColor: Colors.blue,
+                                controller: Countdown,
+onComplete: () async {
+  // Send POST request to mark the trade as complete
+  var response = await http.post(
+    Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'trade_hash': selectedTradeHash,
+    }),
+  );
 
+  if (response.statusCode == 200) {
+    print(response.body);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          countdownComplete = false;
+          selectedTradeHash = null;   
+          Countdown.reset();
+        });
+      }
+    });
+  } else {
+    print(response.body);
+    print('Failed to mark trade as complete');
+  }
+},
 
 
-      
+                              ),
+                            ),
+                          ),
+                          if (bankDetails != null)
+                            _buildSellerDetailsUI(
+                              context,
+                              bankDetails['holder_name'] ?? 'N/A',
+                              bankDetails['account_number'] ?? 'N/A',
+                              bankDetails['bank_name'] ?? 'N/A',
+                              latestTrade['fiat_amount_requested'] ?? 'N/A',
+                            )
+                          else
+                            _buildSellerChatDetailsUI(
+                              context,
+                              recentPersonName,
+                              recentAccountNumber,
+                              recentBankName,
+                              latestTrade['fiat_amount_requested'] ?? 'N/A',
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+
             SizedBox(width: 20),
-      
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -687,7 +717,7 @@ Expanded(
                                           style: GoogleFonts.poppins())
                                     ]);
                               }
-      
+
                               final tradeMessages =
                                   snapshot.data!.data() as Map<String, dynamic>;
                               final messages = List<Map<String, dynamic>>.from(
@@ -700,13 +730,13 @@ Expanded(
                                 '2minutepay'
                               ];
                               //print(tradeMessages);
-      
+
                               print('Selected Trade Hash $selectedTradeHash');
-      
+
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 _processMessages(messages);
                               });
-      
+
                               return ListView.builder(
                                 itemCount: messages.length,
                                 itemBuilder: (context, index) {
@@ -717,7 +747,7 @@ Expanded(
                                   final isMine =
                                       myUsername.contains(messageAuthor);
                                   print('Current User >> $messageAuthor');
-      
+
                                   String messageText;
                                   if (message['text'] is Map<String, dynamic> &&
                                       message['text']
@@ -732,7 +762,7 @@ Expanded(
                                   } else {
                                     messageText = message['text'].toString();
                                   }
-      
+
                                   return Align(
                                     alignment: isMine
                                         ? Alignment.centerRight
@@ -770,7 +800,6 @@ Expanded(
                             },
                           ),
                         ),
-      
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -793,8 +822,6 @@ Expanded(
                             ],
                           ),
                         ),
-      
-      
                         if (_responseMessage.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -810,7 +837,6 @@ Expanded(
                       ],
                     ),
             ),
-      
           ],
         ),
       ),
@@ -840,8 +866,7 @@ Widget _buildSellerChatDetailsUI(BuildContext context, String? personName,
       _buildHeaderContainer(context),
       SizedBox(height: 3.h),
       _buildDetailsContainer(context, personName ?? 'N/A',
-          accountNumber ?? 'Typing...', bankName ?? 'Typing...', 
-          amount,
+          accountNumber ?? 'Typing...', bankName ?? 'Typing...', amount,
           isChatDetails: true),
       SizedBox(height: 7.h),
       _buildFooterButtons(context),
@@ -870,31 +895,31 @@ Widget _buildDetailsContainer(BuildContext context, String accountHolder,
     ),
     width: MediaQuery.of(context).size.width - 30,
     child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            isChatDetails ? "Seller's Chat Details" : "Seller's Details",
-            style: GoogleFonts.poppins(
-              textStyle:
-                  TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              isChatDetails ? "Seller's Chat Details" : "Seller's Details",
+              style: GoogleFonts.poppins(
+                textStyle:
+                    TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-          SizedBox(height: 2.h),
-          _buildDetailRow('Account Name :', accountHolder, 5.sp),
-          Divider(),
-          _buildDetailRow('Account Number :', accountNumber, 8.sp),
-          Divider(),
-          _buildDetailRow('Bank Name:', bankName, 8.sp),
-          Divider(),
-          _buildDetailRow('Amounts:', formatNairas(amount), 18.sp),
-        ],
-      )
-    ),
+            SizedBox(height: 2.h),
+            _buildDetailRow('Account Name :', accountHolder, 5.sp),
+            Divider(),
+            _buildDetailRow('Account Number :', accountNumber, 8.sp),
+            Divider(),
+            _buildDetailRow('Bank Name:', bankName, 8.sp),
+            Divider(),
+            _buildDetailRow('Amounts:', formatNairas(amount), 18.sp),
+          ],
+        )),
   );
 }
+
 
 Widget _buildDetailRow(String title, String value, double textSize) {
   return Row(
@@ -915,6 +940,8 @@ Widget _buildDetailRow(String title, String value, double textSize) {
     ],
   );
 }
+
+
 
 Widget _buildFooterButtons(BuildContext context) {
   return Row(
