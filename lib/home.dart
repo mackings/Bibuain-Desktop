@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:bdesktop/alltrades.dart';
 import 'package:bdesktop/complains.dart';
 import 'package:bdesktop/payers.dart';
+import 'package:bdesktop/socket.dart';
 import 'package:bdesktop/trades.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -19,9 +20,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   static List<Widget> _pages = <Widget>[
-    Trades(),
+   // Trades(),
+   Socket(),
     AllComplains(),
-    AllTrades(),
+
+    //AllTrades(),
+    Socket(),
     Payers()
   ];
 
