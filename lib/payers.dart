@@ -419,58 +419,74 @@ class _PayersState extends State<Payers> {
     }
   }
 
-  Future<void> _markTradeAsPaid(BuildContext context) async {
-    try {
-      // Call the API to mark the trade as paid
-      final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': selectedTradeHash, // Ensure latestTradeHash is correct
-        }),
-      );
 
-      if (response.statusCode == 200) {
-        print(response.body);
-        // If the server returns a 200 OK response, continue with Firebase updates
-        await FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .update({
-          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
-        });
-
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({
-          'isPaid': true,
-        });
-
-        // Reset UI state and wait for the next trade
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              selectedTradeHash = null;
-              countdownComplete = true; // Countdown is complete
-              Countdown.reset(); // Reset countdown timer
-            });
-          }
-        });
-
-        setState(() {
-          selectedTradeHash = null;
-        });
-      } else {
-        // Handle the error if the request fails
-        print('Failed to mark trade as paid: ${response.body}');
-        // Show an alert to the user or handle the error accordingly
-      }
-    } catch (e) {
-      print('Error making API call: $e');
-      // Handle the error appropriately, e.g., show an error message to the user
-    }
+Future<void> _markTradeAsPaid(BuildContext context) async {
+  if (countdownStartTime == null) {
+    print("Countdown has not started yet!");
+    return;
   }
+
+  // Capture the time at which the button was pressed to mark the trade as paid
+  DateTime tradePaidTime = DateTime.now();
+
+  // Calculate the time it took to mark the trade as paid
+  Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
+  print(">>>>>>  PAID AFTER : ${timeTaken.inSeconds} seconds");
+
+  try {
+    // Call the API to mark the trade as paid
+    final response = await http.post(
+      Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'trade_hash': selectedTradeHash, // Ensure latestTradeHash is correct
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print(response.body);
+      print('>>>>>>>>>>> Remaining time : $remainingTime seconds');
+
+      // Update Firestore with the elapsed time and mark trade as paid
+      await FirebaseFirestore.instance
+          .collection('staff')
+          .doc(loggedInStaffID)
+          .update({
+        'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+      });
+
+      await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(selectedTradeHash)
+          .update({
+        'isPaid': true,
+        'timeToMarkAsPaid': timeTaken.inSeconds, // Store the elapsed time
+      });
+
+      // Reset UI state and wait for the next trade
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            selectedTradeHash = null;
+            countdownComplete = true; // Countdown is complete
+            Countdown.reset(); // Reset countdown timer
+          });
+        }
+      });
+
+      setState(() {
+        selectedTradeHash = null;
+      });
+    } else {
+      // Handle the error if the request fails
+      print('Failed to mark trade as paid: ${response.body}');
+      // Show an alert to the user or handle the error accordingly
+    }
+  } catch (e) {
+    print('Error making API call: $e');
+    // Handle the error appropriately, e.g., show an error message to the user
+  }
+}
 
   @override
   void didChangeDependencies() {
@@ -483,26 +499,27 @@ class _PayersState extends State<Payers> {
   late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
   final Countdown = CountDownController();
 
-  late Timer _timer;
-  int _remainingTime = 60; // 60 seconds
-  double _progressValue = 1.0;
+  final _countdownController = CountDownController();
+  int remainingTime = 12;
+  Timer? _timer;
+  int _remainingTime = 60;
   bool countdownComplete = false;
+  DateTime? countdownStartTime;
+  Timer? autoMarkPaidTimer;
+
+void startCountdown() {
+  countdownStartTime = DateTime.now(); // Capture start time when countdown begins
+  print("Countdown started at: $countdownStartTime");
+}
 
   void _startTimer() {
-    _remainingTime = 60;
-    _progressValue = 1.0;
-
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (_remainingTime > 0) {
+    Timer.periodic(Duration(seconds: 1), (timer) {
+      if (mounted && remainingTime > 0) {
         setState(() {
-          _remainingTime--;
-          _progressValue = _remainingTime / 60;
+          remainingTime--;
         });
       } else {
         timer.cancel();
-        setState(() {
-          selectedTradeHash = null; // Clear the trade to fetch the next one
-        });
       }
     });
   }
@@ -629,10 +646,11 @@ class _PayersState extends State<Payers> {
 
                   if (unpaidTrades.isEmpty) {
                     return Align(
-                      alignment: Alignment.centerRight,
-                      child: Text('No Assigned Trade Yet.',style: GoogleFonts.poppins(
-                        fontSize: 10.sp
-                      ),));
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'No Assigned Trade Yet.',
+                          style: GoogleFonts.poppins(fontSize: 10.sp),
+                        ));
                   }
 
                   Map<String, dynamic> latestTrade = unpaidTrades.last;
@@ -651,10 +669,6 @@ class _PayersState extends State<Payers> {
                     });
                   }
 
-                  // if (countdownComplete || selectedTradeHash == null) {
-                  //   return Center(child: Text('Waiting for new trade...'));
-                  // }
-
                   return StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('tradeMessages')
@@ -665,15 +679,27 @@ class _PayersState extends State<Payers> {
                           ConnectionState.waiting) {
                         return Center(child: CircularProgressIndicator());
                       }
+                      // if (!tradeSnapshot.hasData ||
+                      //     !tradeSnapshot.data!.exists) {
+                      //   return Align(
+                      //     alignment: Alignment.centerRight,
+                      //     child: Text(
+                      //         'Incoming Trade.',style: GoogleFonts.poppins(
+                      //           fontSize: 10.sp
+                      //         ),),
+                      //   );
+                      // }
                       if (!tradeSnapshot.hasData ||
                           !tradeSnapshot.data!.exists) {
-                        return Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                              'Incoming Trade.',style: GoogleFonts.poppins(
-                                fontSize: 10.sp
-                              ),),
-                        );
+                        if (autoMarkPaidTimer == null) {
+                          autoMarkPaidTimer =
+                              Timer(Duration(seconds: 10), () async {
+                            if (!tradeSnapshot.hasData ||
+                                !tradeSnapshot.data!.exists) {
+                              await _markTradeAsPaid(context);
+                            }
+                          });
+                        }
                       }
 
                       final tradeMessages =
@@ -692,79 +718,83 @@ class _PayersState extends State<Payers> {
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: CircularCountDownTimer(
-                                key: ValueKey(selectedTradeHash),
-                                width: 30,
-                                height: 30,
-                                duration: 12,
-                                fillColor: Colors.black,
-                                ringColor: Colors.blue,
-                                controller: Countdown,
-                                onComplete: () async {
-                                  try {
-                                    // Call the API to mark the trade as paid
-                                    final response = await http.post(
-                                      Uri.parse(
-                                          'https://tester-1wva.onrender.com/trade/mark'),
-                                      headers: {
-                                        'Content-Type': 'application/json'
-                                      },
-                                      body: jsonEncode({
-                                        'trade_hash':
-                                            latestTradeHash, // Make sure latestTradeHash is correct
-                                      }),
-                                    );
+  key: ValueKey(selectedTradeHash),
+  width: 30,
+  height: 30,
+  duration: 10,
+  fillColor: Colors.black,
+  ringColor: Colors.blue,
+  controller: _countdownController,
+  autoStart: true, // Ensure autoStart is true so the timer starts automatically
+  onStart: () {
+    // Capture the start time when the countdown starts
+    countdownStartTime = DateTime.now();
+    print("Countdown started at: $countdownStartTime");
+  },
+  onComplete: () async {
+    // Capture the time at which the trade was marked as paid
+    DateTime tradePaidTime = DateTime.now();
 
-                                    if (response.statusCode == 200) {
-                                      print(response.body);
-                                      // If the server returns a 200 OK response, continue with Firebase updates
-                                      await FirebaseFirestore.instance
-                                          .collection('staff')
-                                          .doc(loggedInStaffID)
-                                          .update({
-                                        'assignedTrades':
-                                            FieldValue.arrayRemove(
-                                                [latestTrade]),
-                                      });
+    // Calculate the time it took to mark the trade as paid
+    Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
+    print("Trade marked as paid after: ${timeTaken.inSeconds} seconds");
 
-                                      await FirebaseFirestore.instance
-                                          .collection('trades')
-                                          .doc(latestTradeHash)
-                                          .update({
-                                        'isPaid': true,
-                                      });
+    try {
+      final response = await http.post(
+        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'trade_hash': latestTradeHash,
+        }),
+      );
 
-                                      // Reset UI state and wait for the next trade
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback((_) {
-                                        if (mounted) {
-                                          setState(() {
-                                            selectedTradeHash = null;
-                                            countdownComplete =
-                                                true; // Countdown is complete
-                                            Countdown
-                                                .reset(); // Reset countdown timer
-                                          });
-                                        }
-                                      });
-                                      setState(() {
-                                        selectedTradeHash = null;
-                                      });
-                                    } else {
-                                      // Handle the error if the request fails
-                                      print(
-                                          'Failed to mark trade as paid: ${response.body}');
-                                      // You might want to handle errors here, like showing an alert or retrying
-                                    }
-                                  } catch (e) {
-                                    print('Error making API call: $e');
-                                    // Handle the error appropriately, for example by showing an error message to the user
-                                  }
-                                },
-                              ),
+      if (response.statusCode == 200) {
+        print(response.body);
+        print('Trade marked as paid successfully.');
+
+        await FirebaseFirestore.instance
+            .collection('staff')
+            .doc(loggedInStaffID)
+            .update({
+          'assignedTrades': FieldValue.arrayRemove([latestTrade]),
+        });
+
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(latestTradeHash)
+            .update({
+          'isPaid': true,
+          'timeToMarkAsPaid': timeTaken.inSeconds, // Store the elapsed time in Firestore
+        });
+
+        // Reset UI state and wait for the next trade
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedTradeHash = null;
+              countdownComplete = true;
+              Countdown.reset();
+              _countdownController.reset();
+              remainingTime = 12;
+            });
+          }
+        });
+
+        setState(() {
+          selectedTradeHash = null;
+        });
+      } else {
+        print('Failed to mark trade as paid: ${response.body}');
+      }
+    } catch (e) {
+      print('Error making API call: $e');
+    }
+  },
+),
                             ),
                           ),
                           SizedBox(
-                            height: 2.h,
+                            height: 1.h,
                           ),
                           if (bankDetails != null)
                             _buildSellerDetailsUI(
@@ -774,7 +804,6 @@ class _PayersState extends State<Payers> {
                               bankDetails['bank_name'] ?? 'N/A',
                               latestTrade['fiat_amount_requested'] ?? 'N/A',
                             )
-                            
                           else
                             _buildSellerChatDetailsUI(
                               context,
@@ -784,7 +813,7 @@ class _PayersState extends State<Payers> {
                               latestTrade['fiat_amount_requested'] ?? 'N/A',
                             ),
 
-                        ///UPDATEZ
+                          ///UPDATEZ
 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -840,7 +869,7 @@ class _PayersState extends State<Payers> {
                                 ),
                               )
                             ],
-                          )
+                          ),
                         ],
                       );
                     },
@@ -849,7 +878,6 @@ class _PayersState extends State<Payers> {
               ),
             ),
             SizedBox(width: 20),
-
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -874,9 +902,7 @@ class _PayersState extends State<Payers> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-
-                                      Text("",
-                                          style: GoogleFonts.poppins())
+                                      Text("", style: GoogleFonts.poppins())
                                     ],
                                   ),
                                 );
