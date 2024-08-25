@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -11,11 +12,14 @@ import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
 
 class Payers extends StatefulWidget {
-  const Payers({Key? key}) : super(key: key);
+  final String username; 
+
+  const Payers({Key? key, required this.username}) : super(key: key);
 
   @override
   State<Payers> createState() => _PayersState();
 }
+
 
 class _PayersState extends State<Payers> {
   final TextEditingController _messageController = TextEditingController();
@@ -36,6 +40,8 @@ class _PayersState extends State<Payers> {
   String? recentPersonName1;
   String? recentBankName1;
   dynamic fiatAmount;
+
+   late String loggedInStaffID;
 
   Map<String, String> bankCodes = {
     "Abbey Mortgage Bank": "801",
@@ -420,26 +426,24 @@ class _PayersState extends State<Payers> {
   }
 
 
-Future<void> _markTradeAsPaid(BuildContext context) async {
+Future<void> _markTradeAsPaid(BuildContext context, String username) async {
   if (countdownStartTime == null) {
     print("Countdown has not started yet!");
     return;
   }
 
-  // Capture the time at which the button was pressed to mark the trade as paid
   DateTime tradePaidTime = DateTime.now();
-
-  // Calculate the time it took to mark the trade as paid
   Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
-  print(">>>>>>  PAID AFTER : ${timeTaken.inSeconds} seconds");
+  print(">>>>>> PAID AFTER : ${timeTaken.inSeconds} seconds");
 
   try {
-    // Call the API to mark the trade as paid
+
     final response = await http.post(
       Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'trade_hash': selectedTradeHash, // Ensure latestTradeHash is correct
+        'trade_hash': selectedTradeHash,
+        'markedAt':'${timeTaken.inSeconds}'
       }),
     );
 
@@ -460,16 +464,17 @@ Future<void> _markTradeAsPaid(BuildContext context) async {
           .doc(selectedTradeHash)
           .update({
         'isPaid': true,
-        'timeToMarkAsPaid': timeTaken.inSeconds, // Store the elapsed time
+        'PaidIn': timeTaken.inSeconds,
       });
 
-      // Reset UI state and wait for the next trade
+      // Save to Firebase Realtime Database
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
             selectedTradeHash = null;
-            countdownComplete = true; // Countdown is complete
-            Countdown.reset(); // Reset countdown timer
+            countdownComplete = true;
+            Countdown.reset();
           });
         }
       });
@@ -478,13 +483,10 @@ Future<void> _markTradeAsPaid(BuildContext context) async {
         selectedTradeHash = null;
       });
     } else {
-      // Handle the error if the request fails
       print('Failed to mark trade as paid: ${response.body}');
-      // Show an alert to the user or handle the error accordingly
     }
   } catch (e) {
     print('Error making API call: $e');
-    // Handle the error appropriately, e.g., show an error message to the user
   }
 }
 
@@ -493,7 +495,6 @@ Future<void> _markTradeAsPaid(BuildContext context) async {
     super.didChangeDependencies();
   }
 
-  final String loggedInStaffID = "Toby";
 
   late StreamSubscription<DocumentSnapshot> _staffSubscription;
   late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
@@ -555,6 +556,7 @@ void startCountdown() {
   @override
   void initState() {
     super.initState();
+    loggedInStaffID = widget.username;
     _listenToStaffChanges();
     setState(() {
       selectedTradeHash = null;
@@ -609,12 +611,27 @@ void startCountdown() {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
+
+            Expanded(
+              flex: 2,
+              child: Column()
+              ),
+
+//             Container(
+//   margin: EdgeInsets.symmetric(vertical: 20.0), // Top and bottom spacing
+//   height: double.infinity, // Full height
+//   width: 1.0, // Width of the divider (thickness)
+//   color: Colors.grey, // Color of the divider
+// ),
+
+
             SizedBox(
-              width: 2.w,
+              width: 5.w,
             ),
+
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -696,7 +713,7 @@ void startCountdown() {
                               Timer(Duration(seconds: 10), () async {
                             if (!tradeSnapshot.hasData ||
                                 !tradeSnapshot.data!.exists) {
-                              await _markTradeAsPaid(context);
+                              await _markTradeAsPaid(context,'Auto');
                             }
                           });
                         }
@@ -725,17 +742,14 @@ void startCountdown() {
   fillColor: Colors.black,
   ringColor: Colors.blue,
   controller: _countdownController,
-  autoStart: true, // Ensure autoStart is true so the timer starts automatically
+  autoStart: true, 
   onStart: () {
-    // Capture the start time when the countdown starts
     countdownStartTime = DateTime.now();
     print("Countdown started at: $countdownStartTime");
   },
-  onComplete: () async {
-    // Capture the time at which the trade was marked as paid
-    DateTime tradePaidTime = DateTime.now();
+  onComplete: () async { 
 
-    // Calculate the time it took to mark the trade as paid
+    DateTime tradePaidTime = DateTime.now();
     Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
     print("Trade marked as paid after: ${timeTaken.inSeconds} seconds");
 
@@ -745,11 +759,14 @@ void startCountdown() {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': latestTradeHash,
+          'markedAt':'Automatic'
         }),
       );
 
       if (response.statusCode == 200) {
+
         print(response.body);
+
         print('Trade marked as paid successfully.');
 
         await FirebaseFirestore.instance
@@ -764,7 +781,6 @@ void startCountdown() {
             .doc(latestTradeHash)
             .update({
           'isPaid': true,
-          'timeToMarkAsPaid': timeTaken.inSeconds, // Store the elapsed time in Firestore
         });
 
         // Reset UI state and wait for the next trade
@@ -783,11 +799,12 @@ void startCountdown() {
         setState(() {
           selectedTradeHash = null;
         });
+
       } else {
         print('Failed to mark trade as paid: ${response.body}');
       }
     } catch (e) {
-      print('Error making API call: $e');
+      print('Error making API calls: $e');
     }
   },
 ),
@@ -796,6 +813,7 @@ void startCountdown() {
                           SizedBox(
                             height: 1.h,
                           ),
+
                           if (bankDetails != null)
                             _buildSellerDetailsUI(
                               context,
@@ -841,17 +859,19 @@ void startCountdown() {
                               ),
                               GestureDetector(
                                 onTap: () {
+
                                   showDialog(
                                       context: context,
                                       builder: (context) {
-                                        return ConfirmPayDialog(onConfirm: () {
-                                          // _MarkPaid();
-                                          _markTradeAsPaid(context);
+                                        return 
+                                        ConfirmPayDialog(onConfirm: () {                      
+                                          _markTradeAsPaid(context,widget.username);
                                           Navigator.pop(context);
                                         }, onCancel: () {
                                           Navigator.pop(context);
                                         });
                                       });
+
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -877,7 +897,9 @@ void startCountdown() {
                 },
               ),
             ),
+
             SizedBox(width: 20),
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null

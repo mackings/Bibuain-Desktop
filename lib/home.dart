@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     //AllTrades(),
     Socket(),
-    Payers()
+    Payers(username: '',)
   ];
 
   void _onItemTapped(int index) {
