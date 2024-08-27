@@ -284,7 +284,7 @@ class _PayersState extends State<Payers> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Account $recentAccountNumber is already verified.',
+            '$recentAccountNumber Has been Verified.',
             style: GoogleFonts.poppins(),
           ),
           duration: Duration(seconds: 5),
@@ -520,6 +520,9 @@ class _PayersState extends State<Payers> {
     }
   }
 
+
+//Trade Stats
+
 Future<Map<String, dynamic>> getTradeStats() async {
   int totalTrades = 0;
   int tradesMarkedWithNumbers = 0;
@@ -545,12 +548,13 @@ Future<Map<String, dynamic>> getTradeStats() async {
         // If trade is paid, check for 'markedAt'
         String? markedAt = trade['markedAt'];
 
-        if (markedAt == null) {
+        // Check if marked automatically
+        if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
           tradesMarkedAutomatic++;  // Trade marked automatically
         } else {
-          // Parse the 'markedAt' string into a double if it exists
+          // Try parsing the markedAt string into a double
           double? markedAtValue = double.tryParse(markedAt);
-          
+
           if (markedAtValue != null) {
             tradesMarkedWithNumbers++;  // Trade marked with a number
             totalSpeed += markedAtValue;  // Add speed to total
@@ -572,6 +576,7 @@ Future<Map<String, dynamic>> getTradeStats() async {
     'averageSpeed': averageSpeed,
   };
 }
+
 
 //Paxful Rates
 
@@ -856,10 +861,11 @@ Expanded(
   child: FutureBuilder<Map<String, dynamic>>(
     future: getTradeStats(),
     builder: (context, snapshot) {
+      
       if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());  // Loading indicator
+        return Center(child: CircularProgressIndicator()); 
       } else if (snapshot.hasError) {
-        return Text('Error: ${snapshot.error}');  // Error message
+        return Text('Error: ${snapshot.error}');  
       } else if (snapshot.hasData) {
       
         final int totalTrades = snapshot.data!['totalTrades'];
@@ -867,11 +873,29 @@ Expanded(
         final int tradesMarkedWithNumbers = snapshot.data!['tradesMarkedWithNumbers'];
         final double averageSpeed = snapshot.data!['averageSpeed'];
   
-        // Use the container widget to display trade stats
-        return Container(
-          child: _buildTradeStatsContainer(
-            context, totalTrades, tradesMarkedAutomatic, 
-            tradesMarkedWithNumbers, averageSpeed),
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+
+                Text("Hello,",style: GoogleFonts.poppins(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w500
+                ),),
+                SizedBox(width: 1.w,),
+                Text(widget.username),
+              ],
+            ),
+            SizedBox(height: 2.h,),
+
+            Container(
+              child: _buildTradeStatsContainer(
+                context, totalTrades, tradesMarkedAutomatic, 
+                tradesMarkedWithNumbers, averageSpeed),
+            ),
+          ],
         );
       } else {
         return Text('No data available');
@@ -881,8 +905,6 @@ Expanded(
 ),
 
 SizedBox(width: 4.w,),
-
-
 
 
             Expanded(
@@ -906,7 +928,11 @@ SizedBox(width: 4.w,),
                   );
 
                   if (assignedTrades.isEmpty) {
-                    return Center(child: Text('No trades assigned.'));
+                    return Center(child: Text('No Trades assigned.',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12.sp
+                    ),));
                   }
 
                   // Filter out paid trades
@@ -996,100 +1022,115 @@ SizedBox(width: 4.w,),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
+
                                           Padding(
                                             padding: const EdgeInsets.only(left: 7),
-                                            child: CircularCountDownTimer(
-                                              key: ValueKey(selectedTradeHash),
-                                              width: 35,
-                                              height: 35,
-                                              duration: 12,
-                                              fillColor: Colors.black,
-                                              ringColor: Colors.blue,
-                                              controller: _countdownController,
-                                              autoStart: true,
-                                              onStart: () {
-                                                countdownStartTime = DateTime.now();
-                                                print(
-                                                    "Countdown started at: $countdownStartTime");
-                                              },
-                                              onComplete: () async {
-                                                DateTime tradePaidTime = DateTime.now();
-                                                Duration timeTaken = tradePaidTime
-                                                    .difference(countdownStartTime!);
-                                                print(
-                                                    "Trade marked as paid after: ${timeTaken.inSeconds} seconds");
-                                                if (isVerified == true) {
-                                            
-                                                  try {
-                                                    final response = await http.post(
-                                                      Uri.parse(
-                                                          'https://tester-1wva.onrender.com/trade/mark'),
-                                                      headers: {
-                                                        'Content-Type': 'application/json'
-                                                      },
-                                                      body: jsonEncode({
-                                                        'trade_hash': latestTradeHash,
-                                                        'markedAt': 'Automatic'
-                                                      }),
-                                                    );
-                                            
-                                                    if (response.statusCode == 200) {
-                                                      print(response.body);
-                                            
-                                                      print(
-                                                          'Trade marked as paid successfully.');
-                                            
-                                                      await FirebaseFirestore.instance
-                                                          .collection('staff')
-                                                          .doc(loggedInStaffID)
-                                                          .update({
-                                                        'assignedTrades':
-                                                            FieldValue.arrayRemove(
-                                                                [latestTrade]),
-                                                      });
-                                            
-                                                      await FirebaseFirestore.instance
-                                                          .collection('trades')
-                                                          .doc(latestTradeHash)
-                                                          .update({
-                                                        'isPaid': true,
-                                                      });
-                                            
-                                                      // Reset UI state and wait for the next trade
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback((_) {
-                                                        if (mounted) {
-                                                          setState(() {
-                                                            selectedTradeHash = null;
-                                                            countdownComplete = true;
-                                                            Countdown.reset();
-                                                            _countdownController.reset();
-                                                            remainingTime = 12;
-                                                          });
-                                                        }
-                                                      });
-                                            
-                                                      setState(() {
-                                                        selectedTradeHash = null;
-                                                      });
-                                                    } else {
-                                                      print(
-                                                          'Failed to mark trade as paid: ${response.body}');
-                                                    }
-                                                  } catch (e) {
-                                                    print('Error making API calls: $e');
-                                                  }
-                                                } else {
-                                                  print('Invalid Account');
-                                                }
-                                              },
-                                            ),
+                                            child: StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Duration')
+          .doc('Duration')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Text('No duration data found');
+        }
+
+        // Get the duration value from Firestore
+        int durationFromFirestore = snapshot.data!['Duration'] ?? 12;
+
+        return Padding(
+          padding: const EdgeInsets.only(left: 7),
+          child: CircularCountDownTimer(
+            key: ValueKey(selectedTradeHash),
+            width: 35,
+            height: 35,
+            duration: durationFromFirestore,
+            fillColor: Colors.black,
+            ringColor: Colors.blue,
+            controller: _countdownController,
+            autoStart: true,
+            onStart: () {
+              countdownStartTime = DateTime.now();
+              print("Countdown started at: $countdownStartTime");
+            },
+            onComplete: () async {
+              DateTime tradePaidTime = DateTime.now();
+              Duration timeTaken =
+                  tradePaidTime.difference(countdownStartTime!);
+              print(
+                  "Trade marked as paid after: ${timeTaken.inSeconds} seconds");
+
+              if (isVerified == true) {
+                try {
+                  final response = await http.post(
+                    Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'trade_hash': latestTradeHash,
+                      'markedAt': 'Automatic',
+                    }),
+                  );
+
+                  if (response.statusCode == 200) {
+
+                    print(response.body);
+                    print('Trade marked as paid successfully.');
+
+                    await FirebaseFirestore.instance
+                        .collection('staff')
+                        .doc(loggedInStaffID)
+                        .update({
+                      'assignedTrades': FieldValue.arrayRemove([latestTrade]),
+                    });
+
+                    await FirebaseFirestore.instance
+                        .collection('trades')
+                        .doc(latestTradeHash) 
+                        .update({
+                      'isPaid': true,
+                    });
+
+                    // Reset UI state and wait for the next trade
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          selectedTradeHash = null;
+                          _countdownController.reset();
+                        });
+                      }
+                    });
+                  } else {
+                    print(
+                        'Failed to mark trade as paid: ${response.body}');
+                  }
+                } catch (e) {
+                  print('Error making API calls: $e');
+                }
+              } else {
+                print('Invalid Account');
+              }
+            },
+          ),
+        );
+      },
+    ),
                                           ),
+
                                          SizedBox(width: 3.w,),
+
                                          Text("Countdown",style: GoogleFonts.poppins(
                                           fontSize: 7.sp,
                                           fontWeight: FontWeight.w500
                                          ),)
+
                                         ],
                                       ),
 
@@ -1107,12 +1148,12 @@ SizedBox(width: 4.w,),
                     },
                     child: Row(
                       children: [
-                        Icon(Icons.run_circle_sharp,size: 55,),
+                        Icon(Icons.run_circle_sharp,size: 50,),
                         SizedBox(width: 3.w,),
                         Text(
                           '${snapshot.data!.toStringAsFixed(2)} sec',
                           style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.black
                               ),
@@ -1136,6 +1177,7 @@ SizedBox(width: 4.w,),
                           if (bankDetails != null)
                             Column(
                               children: [
+
                                 // HeaderContainer(
                                 //   sellingPrice: sellingPrice,
                                 //   costPrice: costPrice,
@@ -1444,7 +1486,7 @@ Widget _buildDetailsContainer(BuildContext context, String accountHolder,
             Divider(),
             _buildDetailRow('Bank Name:', bankName, 8.sp),
             Divider(),
-            _buildDetailRow('Amounts:', formatNairas(amount), 18.sp),
+            _buildDetailRow('Amount:', formatNairas(amount), 18.sp),
           ],
         )),
   );
@@ -1616,7 +1658,6 @@ Widget _buildTradeStatsContainer(
           border: Border.all(width: 0.5),
           borderRadius: BorderRadius.circular(10),
         ),
-        // Use 80% of the screen width for the container
         width: 50.w,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -1633,18 +1674,20 @@ Widget _buildTradeStatsContainer(
                   ),
                 ),
               ),
+
               SizedBox(height: 2.h),
       
-              _buildStatRow('Total Trades:', totalTrades.toString(), 5.sp),
+              _buildStatRow('Total Trades: ', totalTrades.toString(), 5.sp),
               Divider(),
       
-              _buildStatRow('Trades Marked Automatic:', tradesMarkedAutomatic.toString(), 5.sp),
+              _buildStatRow('Trades Unmarked: ', tradesMarkedAutomatic.toString(), 5.sp),
               Divider(),
       
-              _buildStatRow('Trades Marked With Numbers:', tradesMarkedWithNumbers.toString(), 5.sp),
+              _buildStatRow('Trades Marked: ', tradesMarkedWithNumbers.toString(), 5.sp),
               Divider(),
       
-              _buildStatRow('Average Speed:', '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
+              _buildStatRow('Total Speed: ', '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
+
             ],
           ),
         ),
@@ -1654,10 +1697,8 @@ Widget _buildTradeStatsContainer(
 }
 
 
-
 Widget _buildStatRow(String title, String value, double fontSize) {
   return Row(
-   // mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
         title,
