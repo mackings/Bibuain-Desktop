@@ -170,7 +170,7 @@ class _PayersState extends State<Payers> {
       throw ArgumentError(
           'Input should be a double or a string representing a number');
     }
-
+ 
     String formattednewAmount =
         parsedAmount.toStringAsFixed(2).replaceAllMapped(
               RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -478,7 +478,8 @@ class _PayersState extends State<Payers> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': selectedTradeHash,
-          'markedAt': '${timeTaken.inSeconds}'
+          'markedAt': '${timeTaken.inSeconds}',
+          'amountPaid': fiatAmount,
         }),
       );
 
@@ -1059,31 +1060,31 @@ SizedBox(width: 4.w,),
             autoStart: true,
             onStart: () {
               countdownStartTime = DateTime.now();
-              print("Countdown started at: $countdownStartTime");
+              //print("Countdown started at: $countdownStartTime");
             },
             onComplete: () async {
               DateTime tradePaidTime = DateTime.now();
               Duration timeTaken =
                   tradePaidTime.difference(countdownStartTime!);
-              print(
-                  "Trade marked as paid after: ${timeTaken.inSeconds} seconds");
+            //  print( "Trade marked as paid after: ${timeTaken.inSeconds} seconds");
 
               if (isVerified == true) {
                 try {
+                  
                   final response = await http.post(
                     Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({
                       'trade_hash': latestTradeHash,
                       'markedAt': 'Automatic',
+                      'amountPaid': latestTrade['fiat_amount_requested']
                     }),
                   );
 
                   if (response.statusCode == 200) {
 
                     print(response.body);
-                    print('Trade marked as paid successfully.');
-
+                  //  print('Trade marked as paid successfully.');
                     await FirebaseFirestore.instance
                         .collection('staff')
                         .doc(loggedInStaffID)

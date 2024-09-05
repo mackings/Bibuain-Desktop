@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
-
+import 'package:bdesktop/Mobile/home.dart';
 import 'package:bdesktop/payers.dart';
 import 'package:bdesktop/widgets/bubble.dart';
 import 'package:flutter/material.dart';
@@ -35,12 +36,32 @@ class _LoginPageState extends State<LoginPage> {
       
       if (staffDoc.exists) {
         // Username exists, proceed with existing data
+
+        // Navigator.push(
+        //   context, 
+        //   MaterialPageRoute(
+        //     builder: (context) => Payers(username: username),
+        //   ),
+        // );
+
+        if (Platform.isAndroid) {
+        print("Android");
+       Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Apphome(username: username),
+          ),
+        );
+        } else {
+          
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => Payers(username: username),
           ),
         );
+          
+        }
       } else {
         // Username doesn't exist, create new staff
         bool success = await _addStaff(username);
