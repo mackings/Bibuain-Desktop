@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:bdesktop/Mobile/history.dart';
 import 'package:bdesktop/Mobile/send.dart';
 import 'package:bdesktop/Mobile/widgets/scroll.dart';
+import 'package:bdesktop/widgets/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -333,6 +335,7 @@ class _ApphomeState extends State<Apphome> {
             ),
 
             SizedBox(height: 15),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -340,53 +343,70 @@ class _ApphomeState extends State<Apphome> {
                   "Transactions",
                   style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
                 ),
-                Text(
-                  "View all",
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=> Transactions()));
+                  },
+                  child: Text(
+                    "View all",
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.bold,
+                    color: myColor),
+                  ),
                 ),
               ],
             ),
             SizedBox(height: 15),
 
             // Transaction History
-            isLoading
-                ? Center(child: CircularProgressIndicator())
-                : Expanded(
-                    child: ListView.builder(
-                      itemCount: transactionHistory.length,
-                      itemBuilder: (context, index) {
-                        final transaction = transactionHistory[index];
-                        return ListTile(
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "${transaction['name'] == null ? "Bibuain" : transaction['name']}",
-                                style: GoogleFonts.montserrat(
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                "-N${transaction['amountPaid'] ?? 'Pending'}",
-                                style: GoogleFonts.montserrat(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Paid ${transaction['markedAt']} Seconds",
-                                style:
-                                    GoogleFonts.montserrat(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+isLoading
+    ? Center(child: CircularProgressIndicator())
+    : transactionHistory.isEmpty
+        ? Center(
+            child: Text(
+              "No transaction history available",
+              style: GoogleFonts.montserrat(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              itemCount: transactionHistory.length,
+              itemBuilder: (context, index) {
+                final transaction = transactionHistory[index];
+                return ListTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${transaction['name'] == null ? "Bibuain" : transaction['name']}",
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        "-N${transaction['amountPaid'] ?? 'Pending'}",
+                        style: GoogleFonts.montserrat(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Paid in ${transaction['markedAt']} Seconds",
+                        style: GoogleFonts.montserrat(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          )
           ],
         ),
       ),

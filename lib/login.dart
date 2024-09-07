@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -20,73 +21,55 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _checkAndProceed(BuildContext context) async {
-    String username = _usernameController.text.trim();
+Future<void> _saveUsernameToPrefs(String username) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString('username', username);
+}
+
+Future<void> _checkAndProceed(BuildContext context) async {
+  String username = _usernameController.text.trim();
+
+  if (username.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please enter a username')),
+    );
+    return;
+  }
+
+  try {
+    // Check if username exists in Firestore
+    DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
     
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a username')),
+    if (staffDoc.exists) {
+      // Username exists, proceed with existing data
+      await _saveUsernameToPrefs(username);  // Save username
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Apphome(username: username),
+        ),
       );
-      return;
-    }
-
-    try {
-      // Check if username exists in Firestore
-      DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
+    } else {
+      bool success = await _addStaff(username);
       
-      if (staffDoc.exists) {
-        // Username exists, proceed with existing data
+      if (success) {
+        await _saveUsernameToPrefs(username);  // Save username
 
-        // Navigator.push(
-        //   context, 
-        //   MaterialPageRoute(
-        //     builder: (context) => Payers(username: username),
-        //   ),
-        // );
-
-        if (Platform.isAndroid) {
-        print("Android");
-       Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Apphome(username: username),
-          ),
-        );
-        } else {
-          
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => Payers(username: username),
           ),
         );
-          
-        }
-      } else {
-        // Username doesn't exist, create new staff
-        bool success = await _addStaff(username);
-        
-        if (success) {
-          // After adding, proceed to next screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Payers(username: username),
-            ),
-          );
-        } else {
-          // Handle the error case
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add staff. Please try again.')),
-          );
-        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
-      );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An error occurred: $e')),
+    );
   }
+}
 
   // Function to add staff via POST request
   Future<bool> _addStaff(String username) async {

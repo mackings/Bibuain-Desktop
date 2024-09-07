@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:bdesktop/Mobile/description.dart';
+import 'package:bdesktop/Mobile/home.dart';
+import 'package:bdesktop/widgets/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
@@ -16,9 +19,9 @@ class _FundState extends State<Fund> {
   String? selectedBankName;
   String? selectedBankCode;
   String? selectedBankLogo;
-  String? accountName; // To store the account holder name
-  bool isLoading = false; // To manage the progress indicator state
-  bool showAccountName = false; // To toggle the display of account name
+  String? accountName;
+  bool isLoading = false;
+  bool showAccountName = false;
 
   Future<void> showBankSelectionSheet(BuildContext context) async {
     final banks = await fetchBanks(); // Fetch banks data
@@ -27,6 +30,7 @@ class _FundState extends State<Fund> {
       context: context,
       builder: (context) {
         return Container(
+          height: 1900,
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +72,7 @@ class _FundState extends State<Fund> {
                     return ListTile(
                       leading: Image.network(bank['logo']),
                       title: Text(bank['name']),
-                      subtitle: Text(bank['code']),
+                     // subtitle: Text(bank['code']),
                       onTap: () {
                         _selectBank(bank);
                         Navigator.pop(context);
@@ -118,8 +122,8 @@ class _FundState extends State<Fund> {
       final data = json.decode(response.body);
       print(response.body);
       setState(() {
-        accountName =
-            data['data']['account_name']; // Assuming the API returns 'accountName'
+        accountName = data['data']
+            ['account_name']; // Assuming the API returns 'accountName'
         showAccountName = true; // Show the account name
       });
     } else {
@@ -152,7 +156,8 @@ class _FundState extends State<Fund> {
       appBar: AppBar(
         title: Text(
           'New NGN Recipient',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w700,
+          fontSize: 20),
         ),
         centerTitle: true,
         bottom: isLoading
@@ -160,73 +165,134 @@ class _FundState extends State<Fund> {
                 preferredSize: Size(double.infinity, 4.0),
                 child: LinearProgressIndicator(),
               )
-            : null, 
+            : null,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Bank',
-                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
-                Container(
-                  child: TextFormField(
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      hintText: 'Select a bank',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: selectedBankLogo != null
-                            ? Image.network(selectedBankLogo!, width: 40)
-                            : null,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.arrow_drop_down),
-                        onPressed: () {
-                          showBankSelectionSheet(context);
-                        },
-                      ),
-                    ),
-                    controller: TextEditingController(text: selectedBankName),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 20),
-
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Account Number',
-                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
-                Container(
-                  child: TextFormField(
-                    controller: _accountNumberController,
-                    keyboardType: TextInputType.number,
-                    //maxLength: 10,
-                    decoration: InputDecoration(
-                      hintText: 'Enter account number',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            if (showAccountName)
-              Row(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.check_circle,color: Colors.green,),SizedBox(width: 5,),
-                  Text('$accountName',
-                      style: GoogleFonts.montserrat()),
+                  Text('Bank',
+                      style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
+                  GestureDetector(
+                    onTap: () {
+                      showBankSelectionSheet(context);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                          color: myForm, borderRadius: BorderRadius.circular(7)),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 5,),
+                        child: TextFormField(
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            hintText: 'Select a bank',
+                            border: InputBorder.none,
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: selectedBankLogo != null
+                                  ? Image.network(selectedBankLogo!, width: 40)
+                                  : Icon(Icons.account_balance),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(Icons.arrow_drop_down),
+                              onPressed: () {
+                                showBankSelectionSheet(context);
+                              },
+                            ),
+                          ),
+                          controller: TextEditingController(text: selectedBankName),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-          ],
+              SizedBox(height: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Account Number',
+                      style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
+                  Container(
+                    decoration: BoxDecoration(
+                        color: myForm, borderRadius: BorderRadius.circular(7)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5,vertical: 3),
+                      child: TextFormField(
+                        controller: _accountNumberController,
+                        keyboardType: TextInputType.number,
+                        //maxLength: 10,
+                        decoration: InputDecoration(
+                            hintText: 'Enter account number',
+                            border: InputBorder.none),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              if (showAccountName)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
+                    SizedBox(
+                      width: 5,
+                    ),
+                    Text('$accountName', style: GoogleFonts.montserrat()),
+                  ],
+                ),
+              SizedBox(
+                height: 330,
+              ),
+              GestureDetector(
+                onTap: () {
+                  if(showAccountName)
+                  Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Description(
+        accountName: accountName,
+        bankImg: selectedBankLogo,
+        ),
+          ),
+        );
+        else{
+            Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Apphome(username: "")
+          ),
+        );
+        }
+        
+        
+                },
+                child: Container(
+                  height: 50,
+                  width: MediaQuery.of(context).size.width - 20,
+                  decoration: BoxDecoration(
+                    color: myColor,
+                  ),
+                  child: Center(
+                      child: Text(
+                    "Next",
+                    style: GoogleFonts.montserrat(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500),
+                  )),
+                ),
+              )
+            ],
+          ),
         ),
       ),
     );
