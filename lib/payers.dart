@@ -1062,63 +1062,61 @@ SizedBox(width: 4.w,),
               countdownStartTime = DateTime.now();
               //print("Countdown started at: $countdownStartTime");
             },
-            onComplete: () async {
-              DateTime tradePaidTime = DateTime.now();
-              Duration timeTaken =
-                  tradePaidTime.difference(countdownStartTime!);
-            //  print( "Trade marked as paid after: ${timeTaken.inSeconds} seconds");
+onComplete: () async {
+  DateTime tradePaidTime = DateTime.now();
+  Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
 
-              if (isVerified == true) {
-                try {
-                  
-                  final response = await http.post(
-                    Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-                    headers: {'Content-Type': 'application/json'},
-                    body: jsonEncode({
-                      'trade_hash': latestTradeHash,
-                      'markedAt': 'Automatic',
-                      'amountPaid': latestTrade['fiat_amount_requested']
-                    }),
-                  );
+  if (isVerified == true) {
+    try {
+      // Delay by 2 seconds before marking the trade as paid
+      await Future.delayed(Duration(seconds: 2));
 
-                  if (response.statusCode == 200) {
+      final response = await http.post(
+        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'trade_hash': latestTradeHash,
+          'markedAt': 'Automatic',
+          'amountPaid': latestTrade['fiat_amount_requested']
+        }),
+      );
 
-                    print(response.body);
-                  //  print('Trade marked as paid successfully.');
-                    await FirebaseFirestore.instance
-                        .collection('staff')
-                        .doc(loggedInStaffID)
-                        .update({
-                      'assignedTrades': FieldValue.arrayRemove([latestTrade]),
-                    });
+      if (response.statusCode == 200) {
+        // Mark trade as paid in Firestore
+        await FirebaseFirestore.instance
+            .collection('staff')
+            .doc(loggedInStaffID)
+            .update({
+          'assignedTrades': FieldValue.arrayRemove([latestTrade]),
+        });
 
-                    await FirebaseFirestore.instance
-                        .collection('trades')
-                        .doc(latestTradeHash) 
-                        .update({
-                      'isPaid': true,
-                    });
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(latestTradeHash)
+            .update({
+          'isPaid': true,
+        });
 
-                    // Reset UI state and wait for the next trade
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() {
-                          selectedTradeHash = null;
-                          _countdownController.reset();
-                        });
-                      }
-                    });
-                  } else {
-                    print(
-                        'Failed to mark trade as paid: ${response.body}');
-                  }
-                } catch (e) {
-                  print('Error making API calls: $e');
-                }
-              } else {
-                print('Invalid Account');
-              }
-            },
+        // Reset UI state and wait for the next trade
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedTradeHash = null;
+              _countdownController.reset();
+            });
+          }
+        });
+      } else {
+        print('Failed to mark trade as paid: ${response.body}');
+      }
+    } catch (e) {
+      print('Error making API calls: $e');
+    }
+  } else {
+    print('Invalid Account');
+  }
+}
+
           ),
         );
       },

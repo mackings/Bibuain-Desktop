@@ -430,7 +430,7 @@ isLoading
                             children: [
                               if (transaction['assignedAt'] != null)
                                 Text(
-                                  "Paid on ${formatTimestamp(transaction['assignedAt'])}",
+                                  "${formatTimestamp(transaction['assignedAt'])}",
                                   style: GoogleFonts.montserrat(color: Colors.grey),
                                 )
                               else

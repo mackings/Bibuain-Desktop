@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bdesktop/widgets/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -122,25 +123,31 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                             Text(
                               "-N${transaction['amountPaid'] ?? 'Pending'}",
                               style: GoogleFonts.montserrat(
-                                color: Colors.red,
+                                color: myColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        subtitle: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            if (transaction['assignedAt'] != null)
-                              Text(
-                                "Paid on ${formatTimestamp(transaction['assignedAt'])}",
-                                style: GoogleFonts.montserrat(color: Colors.grey),
-                              )
-                            else
-                              Text(
-                                "Paid in ${transaction['markedAt']} Seconds",
-                                style: GoogleFonts.montserrat(color: Colors.grey),
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (transaction['assignedAt'] != null)
+                                  Text(
+                                    "${formatTimestamp(transaction['assignedAt'])}",
+                                    style: GoogleFonts.montserrat(color: Colors.grey),
+                                  )
+                                else
+                                  Text(
+                                    "Paid in ${transaction['markedAt']} Seconds",
+                                    style: GoogleFonts.montserrat(color: Colors.grey),
+                                  ),
+                              ],
+                            ),
+                            transaction['isPaid'] == false?Text('Not Marked',style: GoogleFonts.montserrat(color: Colors.red),):Text("Marked")
                           ],
                         ),
                       );

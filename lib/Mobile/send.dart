@@ -96,7 +96,7 @@ class _SendMoneyState extends State<SendMoney> {
                             style: GoogleFonts.montserrat(
                                 fontWeight: FontWeight.w300,
                                 color: Colors.grey,
-                                fontSize: 13),
+                                fontSize: 10),
                           ),
                         ],
                       ),
@@ -153,7 +153,7 @@ class _SendMoneyState extends State<SendMoney> {
                       style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w700,
                           color: Colors.black,
-                          fontSize: 15),
+                          fontSize: 13),
                     ),
                     subtitle: Text(
                       "Send to any Kuda account for free.",
@@ -183,7 +183,7 @@ class _SendMoneyState extends State<SendMoney> {
                       style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w700,
                           color: Colors.black,
-                          fontSize: 15),
+                          fontSize: 13),
                     ),
                     subtitle: Text(
                       "Send to a local bank account.",

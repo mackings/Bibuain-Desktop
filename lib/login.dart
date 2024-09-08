@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:bdesktop/Admin/adminhome.dart';
 import 'package:bdesktop/Mobile/home.dart';
 import 'package:bdesktop/payers.dart';
 import 'package:bdesktop/widgets/bubble.dart';
@@ -26,22 +27,55 @@ class _LoginPageState extends State<LoginPage> {
     await prefs.setString('username', username);
   }
 
-  Future<void> _checkAndProceed(BuildContext context) async {
-    String username = _usernameController.text.trim();
+Future<void> _checkAndProceed(BuildContext context) async {
+  String username = _usernameController.text.trim();
 
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a username')),
+  if (username.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please enter a username')),
+    );
+    return;
+  }
+
+  try {
+    // If username is Admin123 and platform is desktop
+    if (username == 'Admin123' && Platform.isWindows) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Adminhome()  // Redirect to the AdminPage
+        ),
       );
       return;
     }
 
-    try {
-      // Check if username exists in Firestore
-      DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
+    // Check if username exists in Firestore
+    DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
+    
+    if (staffDoc.exists) {
+      await _saveUsernameToPrefs(username);  // Save username
+
+      // Navigate based on platform
+      if (Platform.isWindows) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Payers(username: username),
+          ),
+        );
+      } else if (Platform.isAndroid) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Apphome(username: username),
+          ),
+        );
+      }
+
+    } else {
+      bool success = await _addStaff(username);
       
-      if (staffDoc.exists) {
-        // Username exists, proceed with existing data
+      if (success) {
         await _saveUsernameToPrefs(username);  // Save username
 
         // Navigate based on platform
@@ -60,37 +94,15 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         }
-
-      } else {
-        bool success = await _addStaff(username);
-        
-        if (success) {
-          await _saveUsernameToPrefs(username);  // Save username
-
-          // Navigate based on platform
-          if (Platform.isWindows) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Payers(username: username),
-              ),
-            );
-          } else if (Platform.isAndroid) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Apphome(username: username),
-              ),
-            );
-          }
-        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
-      );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An error occurred: $e')),
+    );
   }
+}
+
 
   Future<bool> _addStaff(String username) async {
     final String url = 'https://tester-1wva.onrender.com/paxful/addstaff'; // API URL

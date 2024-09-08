@@ -68,9 +68,10 @@ class _DescriptionState extends State<Description> {
                   builder: (context) =>
                       Apphome(username: _username.toString())));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update trade')),
-          );
+          print(response.body);
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   SnackBar(content: Text('Failed to update trade')),
+          // );
         }
       } catch (e) {
         print('Error: $e');
@@ -96,7 +97,7 @@ class _DescriptionState extends State<Description> {
     });
   }
 
-  // Format amount to include thousand separators
+
   void _formatAmount() {
     String currentText = _amountController.text.replaceAll(',', '');
     if (currentText.isNotEmpty) {
@@ -241,7 +242,8 @@ class _DescriptionState extends State<Description> {
                       )),
                 ],
               ),
-              SizedBox(height: 70),
+
+              SizedBox(height: 35),
 
               Column(
                 children: [
