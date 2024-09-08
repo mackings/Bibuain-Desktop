@@ -21,65 +21,85 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-Future<void> _saveUsernameToPrefs(String username) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString('username', username);
-}
-
-Future<void> _checkAndProceed(BuildContext context) async {
-  String username = _usernameController.text.trim();
-
-  if (username.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please enter a username')),
-    );
-    return;
+  Future<void> _saveUsernameToPrefs(String username) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
   }
 
-  try {
-    // Check if username exists in Firestore
-    DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
-    
-    if (staffDoc.exists) {
-      // Username exists, proceed with existing data
-      await _saveUsernameToPrefs(username);  // Save username
+  Future<void> _checkAndProceed(BuildContext context) async {
+    String username = _usernameController.text.trim();
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Apphome(username: username),
-        ),
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a username')),
       );
-    } else {
-      bool success = await _addStaff(username);
+      return;
+    }
+
+    try {
+      // Check if username exists in Firestore
+      DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
       
-      if (success) {
+      if (staffDoc.exists) {
+        // Username exists, proceed with existing data
         await _saveUsernameToPrefs(username);  // Save username
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Payers(username: username),
-          ),
-        );
-      }
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('An error occurred: $e')),
-    );
-  }
-}
+        // Navigate based on platform
+        if (Platform.isWindows) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Payers(username: username),
+            ),
+          );
+        } else if (Platform.isAndroid) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Apphome(username: username),
+            ),
+          );
+        }
 
-  // Function to add staff via POST request
+      } else {
+        bool success = await _addStaff(username);
+        
+        if (success) {
+          await _saveUsernameToPrefs(username);  // Save username
+
+          // Navigate based on platform
+          if (Platform.isWindows) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Payers(username: username),
+              ),
+            );
+          } else if (Platform.isAndroid) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Apphome(username: username),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    }
+  }
+
   Future<bool> _addStaff(String username) async {
     final String url = 'https://tester-1wva.onrender.com/paxful/addstaff'; // API URL
 
     final Map<String, dynamic> requestBody = {
       "staffId": username,
       "staffDetails": {
-        "name": username, // Assuming username as name for now
-        "email": "example@example.com", // Replace with actual email if available
+        "name": username, 
+        "email": "example@example.com", 
         "role": "Payer", 
       }
     };

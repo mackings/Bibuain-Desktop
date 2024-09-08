@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bdesktop/Mobile/fund.dart';
 import 'package:bdesktop/Mobile/history.dart';
 import 'package:bdesktop/Mobile/send.dart';
 import 'package:bdesktop/Mobile/widgets/scroll.dart';
@@ -6,6 +7,7 @@ import 'package:bdesktop/widgets/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class Apphome extends StatefulWidget {
   final String username;
@@ -60,32 +62,47 @@ class _ApphomeState extends State<Apphome> {
     fetchTransactionHistory();
   }
 
-  Future<void> fetchTransactionHistory() async {
-    final url = Uri.parse(
-        'https://tester-1wva.onrender.com/staff/${widget.username}/history');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print(data);
-        setState(() {
-          transactionHistory = data['data'];
-          isLoading = false;
-        });
-      } else {
-        // Handle error
-        setState(() {
-          isLoading = false;
-        });
-        print("Error: ${response.statusCode}");
-      }
-    } catch (e) {
+ Future<void> fetchTransactionHistory() async {
+  final url = Uri.parse('https://tester-1wva.onrender.com/staff/${widget.username}/history');
+  try {
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print(data);
+      setState(() {
+        transactionHistory = data['data'].reversed.toList(); // Reverse the list here
+        isLoading = false;
+      });
+    } else {
+      // Handle error
       setState(() {
         isLoading = false;
       });
-      print("Error: $e");
+      print("Error: ${response.statusCode}");
     }
+  } catch (e) {
+    setState(() {
+      isLoading = false;
+    });
+    print("Error: $e");
   }
+}
+
+String formatTimestamp(Map<String, dynamic> timestamp) {
+  final seconds = timestamp['_seconds'] as int;
+  final nanoseconds = timestamp['_nanoseconds'] as int;
+
+  // Create a DateTime object in UTC, then convert to local time
+  final date = DateTime.fromMillisecondsSinceEpoch(
+    seconds * 1000 + nanoseconds ~/ 1000000,
+    isUtc: true,
+  ).toLocal(); // Convert to local time
+
+  // Format the DateTime object in the desired format
+  final formatter = DateFormat('MMMM d, h:mm a');
+  return formatter.format(date);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +144,9 @@ class _ApphomeState extends State<Apphome> {
                       child: Text(
                         'Spend',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, color: Colors.black),
+                            fontWeight: FontWeight.w600, 
+                            fontSize: 10,
+                            color: Colors.black),
                       ),
                     )),
                 Container(
@@ -141,7 +160,9 @@ class _ApphomeState extends State<Apphome> {
                       child: Text(
                         'Save',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, color: Colors.black),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                             color: Colors.black),
                       ),
                     )),
                 Container(
@@ -155,7 +176,8 @@ class _ApphomeState extends State<Apphome> {
                       child: Text(
                         'Borrow',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, color: Colors.black),
+                            fontWeight: FontWeight.w600, 
+                            fontSize: 10,color: Colors.black),
                       ),
                     )),
                 Container(
@@ -169,7 +191,8 @@ class _ApphomeState extends State<Apphome> {
                       child: Text(
                         'Invest',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, color: Colors.black),
+                            fontWeight: FontWeight.w600,fontSize: 10,
+                             color: Colors.black),
                       ),
                     )),
               ],
@@ -182,7 +205,7 @@ class _ApphomeState extends State<Apphome> {
             Text(
               "Nigerian Naira",
               style: GoogleFonts.montserrat(
-                  fontWeight: FontWeight.w600, fontSize: 15),
+                  fontWeight: FontWeight.w600, fontSize: 13),
             ),
             SizedBox(
               height: 10,
@@ -194,7 +217,7 @@ class _ApphomeState extends State<Apphome> {
                 Text(
                   "N1,000,000",
                   style: GoogleFonts.montserrat(
-                      fontWeight: FontWeight.w700, fontSize: 25),
+                      fontWeight: FontWeight.w700, fontSize: 20),
                 ),
                 CircleAvatar(
                   radius: 15,
@@ -219,43 +242,49 @@ class _ApphomeState extends State<Apphome> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  height: MediaQuery.of(context).size.height *
-                      0.06, // Responsive height
-                  width: MediaQuery.of(context).size.width *
-                      0.35, // Responsive width
-                  decoration: BoxDecoration(
-                    border: Border.all(width: 1.5, color: Colors.grey),
-                    borderRadius: BorderRadius.circular(6),
-                    color: Colors.white,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.purple,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.keyboard_arrow_up,
-                            color: Colors.white,
-                            size: MediaQuery.of(context).size.width *
-                                0.05, // Responsive icon size
+                GestureDetector(
+                  onTap: () {
+                                      Navigator.push(
+                      context, MaterialPageRoute(builder: (context) => Fund()));
+                  },
+                  child: Container(
+                    height: MediaQuery.of(context).size.height *
+                        0.06, // Responsive height
+                    width: MediaQuery.of(context).size.width *
+                        0.35, // Responsive width
+                    decoration: BoxDecoration(
+                      border: Border.all(width: 1.5, color: Colors.grey),
+                      borderRadius: BorderRadius.circular(6),
+                      color: Colors.white,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: myColor
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.keyboard_arrow_up,
+                              color: Colors.white,
+                              size: MediaQuery.of(context).size.width *
+                                  0.05, // Responsive icon size
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        "Transfer",
-                        style: GoogleFonts.montserrat(
-                          color: Colors.purple,
-                          fontWeight: FontWeight.w600,
-                          fontSize: MediaQuery.of(context).size.width *
-                              0.04, // Responsive font size
+                        Text(
+                          "Transfer",
+                          style: GoogleFonts.montserrat(
+                            color: myColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: MediaQuery.of(context).size.width *
+                                0.04, // Responsive font size
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 Container(
@@ -274,7 +303,7 @@ class _ApphomeState extends State<Apphome> {
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.purple,
+                          color: myColor,
                         ),
                         child: Center(
                           child: Icon(
@@ -288,7 +317,7 @@ class _ApphomeState extends State<Apphome> {
                       Text(
                         "Add Mon...",
                         style: GoogleFonts.montserrat(
-                          color: Colors.purple,
+                          color: myColor,
                           fontWeight: FontWeight.w600,
                           fontSize: MediaQuery.of(context).size.width *
                               0.04, // Responsive font size
@@ -359,54 +388,65 @@ class _ApphomeState extends State<Apphome> {
 
             // Transaction History
 isLoading
-    ? Center(child: CircularProgressIndicator())
-    : transactionHistory.isEmpty
-        ? Center(
-            child: Text(
-              "No transaction history available",
-              style: GoogleFonts.montserrat(
-                fontSize: 16,
-                color: Colors.grey,
+          ? Center(child: CircularProgressIndicator())
+          : transactionHistory.isEmpty
+              ? Center(
+                  child: Text(
+                    "No transaction history available",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                )
+              : Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ListView.builder(
+                      itemCount: transactionHistory.length,
+                      itemBuilder: (context, index) {
+                        final transaction = transactionHistory[index];
+                        return ListTile(
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                transaction['name'] ?? "Bibuain",
+                                style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "-N${transaction['amountPaid'] ?? 'Pending'}",
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (transaction['assignedAt'] != null)
+                                Text(
+                                  "Paid on ${formatTimestamp(transaction['assignedAt'])}",
+                                  style: GoogleFonts.montserrat(color: Colors.grey),
+                                )
+                              else
+                                Text(
+                                  "Paid in ${transaction['markedAt']} Seconds",
+                                  style: GoogleFonts.montserrat(color: Colors.grey),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ),
-            ),
-          )
-        : Expanded(
-            child: ListView.builder(
-              itemCount: transactionHistory.length,
-              itemBuilder: (context, index) {
-                final transaction = transactionHistory[index];
-                return ListTile(
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${transaction['name'] == null ? "Bibuain" : transaction['name']}",
-                        style: GoogleFonts.montserrat(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        "-N${transaction['amountPaid'] ?? 'Pending'}",
-                        style: GoogleFonts.montserrat(
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Paid in ${transaction['markedAt']} Seconds",
-                        style: GoogleFonts.montserrat(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          )
+
+
           ],
         ),
       ),
@@ -449,6 +489,7 @@ Widget buildContainer(IconData icon, String label, Color iconColor) {
             style: GoogleFonts.montserrat(
               fontWeight: FontWeight.w600,
               color: Colors.black,
+              fontSize: 12
             ),
           ),
         ],

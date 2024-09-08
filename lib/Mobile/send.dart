@@ -1,4 +1,5 @@
 import 'package:bdesktop/Mobile/fund.dart';
+import 'package:bdesktop/widgets/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,7 +17,7 @@ class _SendMoneyState extends State<SendMoney> {
       appBar: AppBar(
         title: Text(
           'Send Money',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w700,fontSize: 17),
         ),
         centerTitle: true,
         elevation: 0,
@@ -29,7 +30,7 @@ class _SendMoneyState extends State<SendMoney> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 238, 223, 223),
+                  color: myForm,
                   borderRadius: BorderRadius.circular(7),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -87,7 +88,7 @@ class _SendMoneyState extends State<SendMoney> {
                             style: GoogleFonts.montserrat(
                                 fontWeight: FontWeight.w700,
                                 color: Colors.black,
-                                fontSize: 17),
+                                fontSize: 15),
                           ),
                           SizedBox(height: 4), // Space between the texts
                           Text(
@@ -95,7 +96,7 @@ class _SendMoneyState extends State<SendMoney> {
                             style: GoogleFonts.montserrat(
                                 fontWeight: FontWeight.w300,
                                 color: Colors.grey,
-                                fontSize: 15),
+                                fontSize: 13),
                           ),
                         ],
                       ),
@@ -141,30 +142,36 @@ class _SendMoneyState extends State<SendMoney> {
                   ),
                 ],
               ),
-              ListTile(
-                  title: Text(
-                    "Send to @username",
-                    style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                        fontSize: 18),
-                  ),
-                  subtitle: Text(
-                    "Send to any Kuda account for free.",
-                    style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey,
-                        fontSize: 11),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.grey,
-                  ),
-                  leading: Image.asset(
-                    "assets/kudas.png",
-                    width: 30,
-                    height: 30,
-                  )),
+              GestureDetector(
+                onTap: () {
+                                    Navigator.push(
+                      context, MaterialPageRoute(builder: (context) => Fund()));
+                },
+                child: ListTile(
+                    title: Text(
+                      "Send to @username",
+                      style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                          fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      "Send to any Kuda account for free.",
+                      style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                          fontSize: 11),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.grey,
+                    ),
+                    leading: Image.asset(
+                      "assets/kudas.png",
+                      width: 30,
+                      height: 30,
+                    )),
+              ),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -176,7 +183,7 @@ class _SendMoneyState extends State<SendMoney> {
                       style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w700,
                           color: Colors.black,
-                          fontSize: 18),
+                          fontSize: 15),
                     ),
                     subtitle: Text(
                       "Send to a local bank account.",
@@ -222,7 +229,7 @@ class _SendMoneyState extends State<SendMoney> {
                     style: GoogleFonts.montserrat(
                         fontWeight: FontWeight.w700,
                         color: Colors.black,
-                        fontSize: 15),
+                        fontSize: 13),
                   ),
                   SizedBox(
                     height: 10,
@@ -232,7 +239,7 @@ class _SendMoneyState extends State<SendMoney> {
                     style: GoogleFonts.montserrat(
                         fontWeight: FontWeight.w500,
                         color: Colors.grey,
-                        fontSize: 15),
+                        fontSize: 12),
                   ),
                   SizedBox(
                     height: 25,
@@ -271,7 +278,7 @@ class _SendMoneyState extends State<SendMoney> {
                                 style: GoogleFonts.montserrat(
                                     fontWeight: FontWeight.w700,
                                     color: Colors.black,
-                                    fontSize: 17),
+                                    fontSize: 13),
                               ),
                               SizedBox(height: 4), // Space between the texts
                               Text(
@@ -279,7 +286,7 @@ class _SendMoneyState extends State<SendMoney> {
                                 style: GoogleFonts.montserrat(
                                     fontWeight: FontWeight.w300,
                                     color: Colors.grey,
-                                    fontSize: 15),
+                                    fontSize: 12),
                               ),
                             ],
                           ),

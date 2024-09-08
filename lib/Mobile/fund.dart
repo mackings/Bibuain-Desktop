@@ -26,66 +26,69 @@ class _FundState extends State<Fund> {
   Future<void> showBankSelectionSheet(BuildContext context) async {
     final banks = await fetchBanks(); // Fetch banks data
 
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          height: 1900,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Select a Bank'),
-              SizedBox(height: 10),
-              Text('Popular Banks'),
-              SizedBox(
-                height: 100,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: banks.take(5).map((bank) {
-                    return GestureDetector(
-                      onTap: () {
-                        _selectBank(bank);
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: 100,
-                        margin: EdgeInsets.only(right: 8),
-                        child: Column(
-                          children: [
-                            Image.network(bank['logo'], height: 50),
-                            Text(bank['name'], overflow: TextOverflow.ellipsis),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              SizedBox(height: 10),
-              Text('All Banks'),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: banks.length,
-                  itemBuilder: (context, index) {
-                    final bank = banks[index];
-                    return ListTile(
-                      leading: Image.network(bank['logo']),
-                      title: Text(bank['name']),
-                     // subtitle: Text(bank['code']),
-                      onTap: () {
-                        _selectBank(bank);
-                        Navigator.pop(context);
-                      },
-                    );
+showModalBottomSheet(
+  context: context,
+  isScrollControlled: true, // This makes the bottom sheet expand more
+  builder: (context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85, // Make it 85% of the screen height
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Select a Bank', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Text('Popular Banks', style: TextStyle(fontSize: 16)),
+          SizedBox(
+            height: 100,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: banks.take(5).map((bank) {
+                return GestureDetector(
+                  onTap: () {
+                    _selectBank(bank);
+                    Navigator.pop(context);
                   },
-                ),
-              ),
-            ],
+                  child: Container(
+                    width: 100,
+                    margin: EdgeInsets.only(right: 8),
+                    child: Column(
+                      children: [
+                        Image.network(bank['logo'], height: 50),
+                        SizedBox(height: 5),
+                        Text(bank['name'], overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-        );
-      },
+          SizedBox(height: 10),
+          Text('All Banks', style: TextStyle(fontSize: 16)),
+          Expanded(
+            child: ListView.builder(
+              itemCount: banks.length,
+              itemBuilder: (context, index) {
+                final bank = banks[index];
+                return ListTile(
+                  leading: Image.network(bank['logo'], height: 30),
+                  title: Text(bank['name']),
+                  // subtitle: Text(bank['code']),
+                  onTap: () {
+                    _selectBank(bank);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
+  },
+);
+
   }
 
   Future<List<dynamic>> fetchBanks() async {
@@ -155,9 +158,9 @@ class _FundState extends State<Fund> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'New NGN Recipient',
+          'New NGN Recipi...',
           style: GoogleFonts.montserrat(fontWeight: FontWeight.w700,
-          fontSize: 20),
+          fontSize: 15),
         ),
         centerTitle: true,
         bottom: isLoading
@@ -186,18 +189,15 @@ class _FundState extends State<Fund> {
                       decoration: BoxDecoration(
                           color: myForm, borderRadius: BorderRadius.circular(7)),
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 5,),
+                        padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
                         child: TextFormField(
                           readOnly: true,
                           decoration: InputDecoration(
                             hintText: 'Select a bank',
                             border: InputBorder.none,
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: selectedBankLogo != null
-                                  ? Image.network(selectedBankLogo!, width: 40)
-                                  : Icon(Icons.account_balance),
-                            ),
+                            prefix: selectedBankLogo != null
+                                ? Image.network(selectedBankLogo!, width: 40)
+                                : null,
                             suffixIcon: IconButton(
                               icon: Icon(Icons.arrow_drop_down),
                               onPressed: () {
@@ -222,11 +222,10 @@ class _FundState extends State<Fund> {
                     decoration: BoxDecoration(
                         color: myForm, borderRadius: BorderRadius.circular(7)),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5,vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
                       child: TextFormField(
                         controller: _accountNumberController,
                         keyboardType: TextInputType.number,
-                        //maxLength: 10,
                         decoration: InputDecoration(
                             hintText: 'Enter account number',
                             border: InputBorder.none),
@@ -250,7 +249,7 @@ class _FundState extends State<Fund> {
                   ],
                 ),
               SizedBox(
-                height: 330,
+                height: 310,
               ),
               GestureDetector(
                 onTap: () {

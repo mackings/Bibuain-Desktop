@@ -62,7 +62,7 @@ class _DescriptionState extends State<Description> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Transfer Successful')),
           );
-          Navigator.push(
+          Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                   builder: (context) =>
