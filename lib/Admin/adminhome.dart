@@ -1,69 +1,484 @@
-import 'package:bdesktop/Admin/widgets/widget.dart';
-import 'package:flutter/material.dart';
+import 'dart:math';
 
-class Adminhome extends StatefulWidget {
-  const Adminhome({super.key});
+import 'package:bdesktop/Admin/widgets/Acontainer.dart';
+import 'package:bdesktop/Admin/widgets/bar.dart';
+import 'package:bdesktop/Admin/widgets/widget.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class AdminHome extends StatefulWidget {
+  const AdminHome({super.key});
 
   @override
-  State<Adminhome> createState() => _AdminhomeState();
+  State<AdminHome> createState() => _AdminHomeState();
 }
 
-class _AdminhomeState extends State<Adminhome> {
+class _AdminHomeState extends State<AdminHome> {
+  final _secondsController = TextEditingController();
+  Map<String, dynamic> _staffDataFromPrefs = {};
+  Map<String, dynamic> _staffDataFetched = {};
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStaffDataFromPrefs();
+  }
+
+  Future<void> _loadStaffDataFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final staffDataString = prefs.getString('staffData');
+    if (staffDataString != null) {
+      setState(() {
+        _staffDataFromPrefs = jsonDecode(staffDataString);
+        _staffDataFetched =
+            _staffDataFromPrefs['data'] ?? {}; // Ensure this is set for UI
+        print(_staffDataFetched);
+      });
+    }
+  }
+
+  Future<void> _updateSeconds() async {
+    final seconds = _secondsController.text;
+    final response = await http.post(
+      Uri.parse('https://your-api-url-to-update-seconds'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'seconds': seconds}),
+    );
+
+    if (response.statusCode == 200) {
+      // Handle successful update
+    } else {
+      // Handle failure
+    }
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _loading = true;
+    });
+    final response = await http.get(
+      Uri.parse('https://tester-1wva.onrender.com/staff/trade-statistics'),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString('staffData', response.body);
+      setState(() {
+        _staffDataFetched = data['data'] ?? {}; // Update fetched data
+        _loading = false;
+      });
+      print("Live $data");
+    } else {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void _showSetSecondsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Set Test Attempt Seconds'),
+          content: TextField(
+            controller: _secondsController,
+            decoration: InputDecoration(
+              labelText: 'Seconds',
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _updateSeconds();
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final staffStatistics = _staffDataFetched['staffStatistics'] ?? [];
+    final totalUnassignedTrades =
+        _staffDataFetched['totalUnassignedTrades']?.toString() ?? '0';
+
     return Scaffold(
       appBar: AppBar(
+        title: Text('Admin Overview',
+            style: GoogleFonts.montserrat(
+                color: Colors.black, fontWeight: FontWeight.w600)),
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(left: 20,right: 20),
-        child: Column(
-          children: [ 
-        
-            Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 60, right: 60, top: 60),
+          child: Column(
+            children: [
+
+Row(
+  children: [
+
+    AContainer(
+      mispaid: null,
+      icon: Icons.attach_money,
+      staffId: "Total Unassigned Trades",
+      speed: totalUnassignedTrades,
+      paidTrades: "",
+      unpaidTrades: "",
+      totalAssignedTrades: "",
+      backgroundColor: Colors.blue,
+    ),
+
+   // SizedBox(width: 20),
+
+    // Spacing between the two widgets
+
+Expanded(
+  child: Container(
+    height: 200,
+    child: BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 100,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40, // Adjust the size to fit your titles
+              getTitlesWidget: (value, meta) {
+                final int index = value.toInt();
+                if (index >= 0 && index < staffStatistics.length) {
+                  return Text(
+                    staffStatistics[index]['staffId'] ?? 'N/A',
+                    style: TextStyle(fontSize: 14),
+                  );
+                }
+                return Container();
+              },
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                StatCard(
-                  icon: Icons.attach_money,
-                  title: "Current Month",
-                  value: "\$9243.34",
-                  percentageChange: "+5.24%",
-                  positiveChange: true,
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false), // Hide left titles (numbers)
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(staffStatistics.length, (index) {
+          final staff = staffStatistics[index];
+          final performanceScore = double.tryParse(staff['performanceScore'] ?? '0.0') ?? 0.0;
+
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: performanceScore.clamp(1.0, double.infinity), // Ensure value is at least 1.0
+                color: Colors.blue, // You might want to vary colors if needed
+                width: 15,
+              ),
+            ],
+          );
+        }),
+      ),
+    ),
+  ),
+)
+
+
+
+    
+  ],
+),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 20),
+
+                       Text(
+                        'Staff Statistics',
+                        style: GoogleFonts.montserrat(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18
+                          ),
+                      ),
+
+                      SizedBox(height: 20),
+                      
+                      Wrap(
+                        spacing: 16.0, // Space between items horizontally
+                        runSpacing: 16.0, // Space between rows
+                        children: staffStatistics.map<Widget>((staff) {
+                          return StatsContainer(
+                            icon: Icons.person_3_outlined,
+                            staffId: staff['staffId'] ?? 'N/A',
+                            speed: staff['averageSpeed'] ?? 'N/A',
+                            paidTrades: staff['paidTrades']?.toString() ?? '0',
+                            unpaidTrades:
+                                staff['unpaidTrades']?.toString() ?? '0',
+                            totalAssignedTrades:
+                                staff['totalAssignedTrades']?.toString() ?? '0',
+                                mispaid: staff['mispayment']['actualTotal']?? '0',
+                            backgroundColor: Colors.white,
+                          );
+                        }).toList(),
+                      ),
+                      SizedBox(height: 20),
+
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _showSetSecondsDialog,
+                        child: Text('Set Seconds'),
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _fetchData,
+                        child: Text('Fetch Data'),
+                      ),
+                      SizedBox(height: 20),
+                      _loading
+                          ? CircularProgressIndicator()
+                          : SizedBox.shrink(),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BarChartWidget extends StatefulWidget {
+  final List<dynamic> staffStatistics;
+
+  const BarChartWidget({required this.staffStatistics});
+
+  @override
+  _BarChartWidgetState createState() => _BarChartWidgetState();
+}
+
+class _BarChartWidgetState extends State<BarChartWidget> {
+  int touchedIndex = -1;
+  bool isPlaying = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Stack(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Text(
+                  'Staff Performance',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                StatCard(
-                  icon: Icons.book,
-                  title: "Course Sell",
-                  value: "824 Course",
-                  percentageChange: "+1.86%",
-                  positiveChange: true,
+                const SizedBox(
+                  height: 4,
                 ),
-                StatCard(
-                  icon: Icons.school,
-                  title: "Students this Month",
-                  value: "1124 Student",
-                  percentageChange: "-2.32%",
-                  positiveChange: false,
+                const Text(
+                  'Performance Scores',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                StatCard(
-                  icon: Icons.visibility,
-                  title: "Profile Views",
-                  value: "2414",
-                  percentageChange: "+24.1%",
-                  positiveChange: true,
+                const SizedBox(
+                  height: 38,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: BarChart(
+                      isPlaying ? randomData() : mainBarData(),
+                      swapAnimationDuration: const Duration(milliseconds: 250),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 12,
                 ),
               ],
             ),
           ),
-        
-           ],
-        ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: Icon(
+                  isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.green,
+                ),
+                onPressed: () {
+                  setState(() {
+                    isPlaying = !isPlaying;
+                    if (isPlaying) {
+                      refreshState();
+                    }
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  BarChartGroupData makeGroupData(
+    int x,
+    double y, {
+    bool isTouched = false,
+    Color barColor = Colors.blue,
+    double width = 15,
+  }) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: isTouched ? y + 1 : y,
+          color: isTouched ? Colors.yellow : barColor,
+          width: width,
+          borderSide: isTouched
+              ? BorderSide(color: Colors.yellow)
+              : const BorderSide(color: Colors.white, width: 0),
+        ),
+      ],
+      showingTooltipIndicators: [0],
+    );
+  }
+
+  BarChartData mainBarData() {
+    return BarChartData(
+      barTouchData: BarTouchData(
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            return BarTooltipItem(
+              '${widget.staffStatistics[group.x]['staffId']}\n',
+              const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+              children: <TextSpan>[
+                TextSpan(
+                  text: rod.toY.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        touchCallback: (FlTouchEvent event, barTouchResponse) {
+          setState(() {
+            if (!event.isInterestedForInteractions ||
+                barTouchResponse == null ||
+                barTouchResponse.spot == null) {
+              touchedIndex = -1;
+              return;
+            }
+            touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+          });
+        },
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            getTitlesWidget: (value, meta) {
+              int index = value.toInt();
+              return Text(
+                (index >= 0 && index < widget.staffStatistics.length)
+                    ? widget.staffStatistics[index]['staffId'] ?? ''
+                    : '',
+                style: TextStyle(fontSize: 12),
+              );
+            },
+            reservedSize: 30,
+          ),
+        ),
+        // leftTitles: const AxisTitles(
+        //   sideTitles: SideTitles(
+        //     showTitles: true,
+        //     reservedSize: 40,
+        //     getTitlesWidget: (value, meta) {
+        //       return Text(value.toInt().toString());
+        //     },
+        //   ),
+        // ),
+      ),
+      borderData: FlBorderData(show: false),
+      barGroups: List.generate(widget.staffStatistics.length, (index) {
+        double yValue = double.tryParse(
+                widget.staffStatistics[index]['performanceScore'] ?? '0') ??
+            0;
+        if (yValue.isNaN || yValue.isInfinite) {
+          yValue = 0;
+        }
+        return makeGroupData(index, yValue, isTouched: index == touchedIndex);
+      }),
+    );
+  }
+
+  BarChartData randomData() {
+    return BarChartData(
+      barTouchData: BarTouchData(enabled: false),
+      titlesData: FlTitlesData(
+        show: true,
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(showTitles: true),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      barGroups: List.generate(7, (i) {
+        return makeGroupData(
+          i,
+          Random().nextDouble() * 20,
+          barColor: Colors.primaries[Random().nextInt(Colors.primaries.length)],
+        );
+      }),
+    );
+  }
+
+  Future<void> refreshState() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (isPlaying) {
+      await refreshState();
+    }
   }
 }

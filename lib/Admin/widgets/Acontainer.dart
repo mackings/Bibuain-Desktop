@@ -1,8 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-class StatsContainer extends StatelessWidget {
+class AContainer extends StatelessWidget {
   final IconData icon;
   final String staffId;
   final String speed;
@@ -12,7 +13,7 @@ class StatsContainer extends StatelessWidget {
   final String? mispaid;
   final Color backgroundColor;
 
-  const StatsContainer({
+  const AContainer({
     required this.icon,
     required this.staffId,
     required this.speed,
@@ -25,10 +26,7 @@ class StatsContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Convert mispaid to double and handle potential null value
     double mispaidValue = double.tryParse(mispaid ?? "0.00") ?? 0.0;
-
-    // Format the amount with thousand separators
     final NumberFormat currencyFormat = NumberFormat('#,##0.00', 'en_US');
     final formattedMispaid = currencyFormat.format(mispaidValue);
 
@@ -37,7 +35,6 @@ class StatsContainer extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(width: 0.5, color: Colors.black),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,11 +67,14 @@ class StatsContainer extends StatelessWidget {
             style: GoogleFonts.montserrat(color: Colors.black),
           ),
           SizedBox(height: 4),
+
           Text(
             "Unpaid Trades: $unpaidTrades",
             style: GoogleFonts.montserrat(color: Colors.black),
           ),
+          
           SizedBox(height: 4),
+
           Text(
             "Total Assigned Trades: $totalAssignedTrades",
             style: GoogleFonts.montserrat(color: Colors.black),

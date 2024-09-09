@@ -50,6 +50,7 @@ dependencies:
   circular_countdown_timer: ^0.2.4
   shimmer: ^3.0.0
   shared_preferences: ^2.3.2
+  fl_chart: ^0.69.0
 
 
 dev_dependencies:

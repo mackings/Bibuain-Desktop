@@ -43,7 +43,7 @@ Future<void> _checkAndProceed(BuildContext context) async {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => Adminhome()  // Redirect to the AdminPage
+          builder: (context) => AdminHome()  // Redirect to the AdminPage
         ),
       );
       return;
