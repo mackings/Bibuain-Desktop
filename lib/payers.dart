@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:bdesktop/widgets/newtimer.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Payers extends StatefulWidget {
   final String username;
@@ -44,6 +46,8 @@ class _PayersState extends State<Payers> {
 
   bool isVerified = false;
   Set<String> verifiedAccounts = {};
+  int? sellingPrice;
+  int? costPrice;
 
   Map<String, String> bankCodes = {
     "Abbey Mortgage Bank": "801",
@@ -132,6 +136,7 @@ class _PayersState extends State<Payers> {
     "Zenith": "057"
   };
 
+  // FORMATTERS
   DateTime _convertToDateTime(dynamic timestamp) {
     if (timestamp is Timestamp) {
       return timestamp.toDate();
@@ -170,7 +175,7 @@ class _PayersState extends State<Payers> {
       throw ArgumentError(
           'Input should be a double or a string representing a number');
     }
- 
+
     String formattednewAmount =
         parsedAmount.toStringAsFixed(2).replaceAllMapped(
               RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -183,16 +188,9 @@ class _PayersState extends State<Payers> {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
-  // void _autoSelectLatestTrade(List<DocumentSnapshot> trades) {
-  //   final latestTradeHash =
-  //       trades.isNotEmpty ? trades.first.get('trade_hash') : null;
-  //   if (latestTradeHash != lastTradeHash) {
-  //     setState(() {
-  //       selectedTradeHash = latestTradeHash;
-  //       lastTradeHash = latestTradeHash;
-  //     });
-  //   }
-  // }
+  // FORMATTERS END
+
+  ///  TRADE MONEY FUNCTIONS
 
   Future<void> _sendMessage() async {
     const String apiUrl =
@@ -473,12 +471,14 @@ class _PayersState extends State<Payers> {
     print(">>>>>> PAID AFTER : ${timeTaken.inSeconds} seconds");
 
     try {
+      
       final response = await http.post(
         Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': selectedTradeHash,
-          'markedAt': '${timeTaken.inSeconds}',
+          //'markedAt': '${timeTaken.inSeconds}',
+          'markedAt': Loadingtime,
           'amountPaid': fiatAmount,
         }),
       );
@@ -521,63 +521,61 @@ class _PayersState extends State<Payers> {
     }
   }
 
+  Future<Map<String, dynamic>> getTradeStats() async {
+    int totalTrades = 0;
+    int tradesMarkedWithNumbers = 0;
+    int tradesMarkedAutomatic = 0;
+    double totalSpeed = 0;
+    int count = 0;
 
-//Trade Stats
+    // Fetch staff document from Firestore
+    DocumentSnapshot staffDoc = await FirebaseFirestore.instance
+        .collection('staff')
+        .doc(widget.username)
+        .get();
 
-Future<Map<String, dynamic>> getTradeStats() async {
-  int totalTrades = 0;
-  int tradesMarkedWithNumbers = 0;
-  int tradesMarkedAutomatic = 0;
-  double totalSpeed = 0;
-  int count = 0;
+    if (staffDoc.exists) {
+      // Extract assigned trades
+      List<dynamic> assignedTrades = staffDoc.get('assignedTrades');
 
-  // Fetch staff document from Firestore
-  DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-      .collection('staff')
-      .doc(widget.username)
-      .get();
+      // Iterate through each trade
+      for (var trade in assignedTrades) {
+        totalTrades++; // Increment total trades counter
 
-  if (staffDoc.exists) {
-    // Extract assigned trades
-    List<dynamic> assignedTrades = staffDoc.get('assignedTrades');
+        if (trade['isPaid'] == true) {
+          // If trade is paid, check for 'markedAt'
+          String? markedAt = trade['markedAt'];
 
-    // Iterate through each trade
-    for (var trade in assignedTrades) {
-      totalTrades++;  // Increment total trades counter
+          // Check if marked automatically
+          if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
+            tradesMarkedAutomatic++; // Trade marked automatically
+          } else {
+            // Try parsing the markedAt string into a double
+            double? markedAtValue = double.tryParse(markedAt);
 
-      if (trade['isPaid'] == true) {
-        // If trade is paid, check for 'markedAt'
-        String? markedAt = trade['markedAt'];
-
-        // Check if marked automatically
-        if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
-          tradesMarkedAutomatic++;  // Trade marked automatically
-        } else {
-          // Try parsing the markedAt string into a double
-          double? markedAtValue = double.tryParse(markedAt);
-
-          if (markedAtValue != null) {
-            tradesMarkedWithNumbers++;  // Trade marked with a number
-            totalSpeed += markedAtValue;  // Add speed to total
-            count++;
+            if (markedAtValue != null) {
+              tradesMarkedWithNumbers++; // Trade marked with a number
+              totalSpeed += markedAtValue; // Add speed to total
+              count++;
+            }
           }
         }
       }
     }
+
+    // Calculate the average speed
+    double averageSpeed = count > 0 ? totalSpeed / count : 0;
+
+    // Return the data as a map
+    return {
+      'totalTrades': totalTrades,
+      'tradesMarkedAutomatic': tradesMarkedAutomatic,
+      'tradesMarkedWithNumbers': tradesMarkedWithNumbers,
+      'averageSpeed': averageSpeed,
+    };
   }
 
-  // Calculate the average speed
-  double averageSpeed = count > 0 ? totalSpeed / count : 0;
-
-  // Return the data as a map
-  return {
-    'totalTrades': totalTrades,
-    'tradesMarkedAutomatic': tradesMarkedAutomatic,
-    'tradesMarkedWithNumbers': tradesMarkedWithNumbers,
-    'averageSpeed': averageSpeed,
-  };
-}
-
+  // TRADE MONEY FUNCTIONS END
 
 //Paxful Rates
 
@@ -640,11 +638,6 @@ Future<Map<String, dynamic>> getTradeStats() async {
     }
   }
 
-  int? sellingPrice;
-  int? costPrice;
-  //final int markup = 250000;
-  //final int SystemOverride = 1587;
-
   void calculatePrices() async {
     int paxfulRate = await fetchPaxfulrates();
     int binanceRate = await fetchBinanceRates();
@@ -685,7 +678,6 @@ Future<Map<String, dynamic>> getTradeStats() async {
           this.sellingPrice = sellingPrice;
           this.costPrice = costPrice;
         });
-
       } else {
         // Calculate the cost price when Binance rate is higher
         int rateDifference = paxfulRate - binanceRate;
@@ -698,26 +690,42 @@ Future<Map<String, dynamic>> getTradeStats() async {
           this.sellingPrice = sellingPrice;
           this.costPrice = costPrice;
         });
-      } 
+      }
     }
   }
+
+//NOTIFIERS
+  ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
+  void _onCountdownComplete() {
+    currentTradeNotifier.value = null;
+  }
+  //NOTIFIERS END
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final unpaidTrades =
+            assignedTrades.where((trade) => trade['isPaid'] == false).toList();
+        if (unpaidTrades.isNotEmpty) {
+          Map<String, dynamic> latestTrade = unpaidTrades.last;
+          String latestTradeHash = latestTrade['trade_hash'];
+
+          if (selectedTradeHash == null ||
+              selectedTradeHash != latestTradeHash) {
+            setState(() {
+              selectedTradeHash = latestTradeHash;
+              countdownComplete = false; // Reset countdown complete status
+              countdownStartTime = DateTime.now(); // Set countdown start time
+              _countdownController.restart(duration: _durationFromFirestore);
+            });
+          }
+        }
+      }
+    });
   }
-
-  late StreamSubscription<DocumentSnapshot> _staffSubscription;
-  late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
-  final Countdown = CountDownController();
-
-  final _countdownController = CountDownController();
-  int remainingTime = 12;
-  Timer? _timer;
-  int _remainingTime = 60;
-  bool countdownComplete = false;
-  DateTime? countdownStartTime;
-  Timer? autoMarkPaidTimer;
 
   void startCountdown() {
     countdownStartTime =
@@ -760,11 +768,6 @@ Future<Map<String, dynamic>> getTradeStats() async {
     });
   }
 
-  ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
-  void _onCountdownComplete() {
-    currentTradeNotifier.value = null;
-  }
-
   Future<double> calculateAverageSpeed() async {
     double totalSpeed = 0;
     int count = 0;
@@ -792,6 +795,48 @@ Future<Map<String, dynamic>> getTradeStats() async {
 
     // Calculate average speed in seconds
     return count > 0 ? totalSpeed / count : 0;
+  }
+
+  late StreamSubscription<DocumentSnapshot> _staffSubscription;
+  late StreamSubscription<DocumentSnapshot> _tradeMessagesSubscription;
+  final Countdown = CountDownController();
+  final _countdownController = CountDownController();
+
+  int remainingTime = 12;
+  Timer? _timer;
+  int _remainingTime = 60;
+  bool countdownComplete = false;
+  DateTime? countdownStartTime;
+  Timer? autoMarkPaidTimer;
+
+  List<Map<String, dynamic>> assignedTrades = [];
+  int? _durationFromFirestore;
+  dynamic Loadingtime;
+
+  Map<String, int> tradeCountdowns = {};
+
+  Future<void> saveCountdownTime(String tradeHash, int remainingTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('countdown_$tradeHash',
+        remainingTime); // Save the remaining time for the trade
+  }
+
+  Future<int?> getSavedCountdownTime(String tradeHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    int? countdownTime = await getSavedCountdownTime(tradeHash);
+    setState(() {
+      Loadingtime = countdownTime;
+      print(" loading Time $Loadingtime");
+    });
+
+    return prefs
+        .getInt('countdown_$tradeHash'); // Retrieve the saved remaining time
+  }
+
+  Future<void> clearCountdownTime(String tradeHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs
+        .remove('countdown_$tradeHash'); // Clear the saved countdown time
   }
 
   @override
@@ -852,62 +897,68 @@ Future<Map<String, dynamic>> getTradeStats() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        actions: [],
+      ),
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
+            Expanded(
+              flex: 2,
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: getTradeStats(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else if (snapshot.hasData) {
+                    final int totalTrades = snapshot.data!['totalTrades'];
+                    final int tradesMarkedAutomatic =
+                        snapshot.data!['tradesMarkedAutomatic'];
+                    final int tradesMarkedWithNumbers =
+                        snapshot.data!['tradesMarkedWithNumbers'];
+                    final double averageSpeed = snapshot.data!['averageSpeed'];
 
-Expanded(
-  flex: 2,
-  child: FutureBuilder<Map<String, dynamic>>(
-    future: getTradeStats(),
-    builder: (context, snapshot) {
-      
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator()); 
-      } else if (snapshot.hasError) {
-        return Text('Error: ${snapshot.error}');  
-      } else if (snapshot.hasData) {
-      
-        final int totalTrades = snapshot.data!['totalTrades'];
-        final int tradesMarkedAutomatic = snapshot.data!['tradesMarkedAutomatic'];
-        final int tradesMarkedWithNumbers = snapshot.data!['tradesMarkedWithNumbers'];
-        final double averageSpeed = snapshot.data!['averageSpeed'];
-  
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-
-                Text("Hello,",style: GoogleFonts.poppins(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w500
-                ),),
-                SizedBox(width: 1.w,),
-                Text(widget.username),
-              ],
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              "Hello,",
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10.sp, fontWeight: FontWeight.w500),
+                            ),
+                            SizedBox(
+                              width: 1.w,
+                            ),
+                            Text(widget.username),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 2.h,
+                        ),
+                        Container(
+                          child: _buildTradeStatsContainer(
+                              context,
+                              totalTrades,
+                              tradesMarkedAutomatic,
+                              tradesMarkedWithNumbers,
+                              averageSpeed),
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Text('No data available');
+                  }
+                },
+              ),
             ),
-            SizedBox(height: 2.h,),
-
-            Container(
-              child: _buildTradeStatsContainer(
-                context, totalTrades, tradesMarkedAutomatic, 
-                tradesMarkedWithNumbers, averageSpeed),
+            SizedBox(
+              width: 4.w,
             ),
-          ],
-        );
-      } else {
-        return Text('No data available');
-      }
-    },
-  ),
-),
-
-SizedBox(width: 4.w,),
-
-
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -1116,7 +1167,6 @@ onComplete: () async {
     print('Invalid Account');
   }
 }
-
           ),
         );
       },
@@ -1175,13 +1225,7 @@ onComplete: () async {
 
                           if (bankDetails != null)
                             Column(
-                              children: [
-
-                                // HeaderContainer(
-                                //   sellingPrice: sellingPrice,
-                                //   costPrice: costPrice,
-                                // ),
-                                
+                              children: [                           
                                 _buildSellerDetailsUI(
                                   context,
                                   bankDetails['holder_name'] ?? 'N/A',
@@ -1194,10 +1238,6 @@ onComplete: () async {
                           else
                             Column(
                               children: [
-                                // HeaderContainer(
-                                //   sellingPrice: sellingPrice,
-                                //   costPrice: costPrice,
-                                // ),
                                 _buildSellerChatDetailsUI(
                                   context,
                                   recentPersonName,
@@ -1260,7 +1300,7 @@ onComplete: () async {
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(color: Colors.black)),
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ],
@@ -1270,6 +1310,8 @@ onComplete: () async {
                 },
               ),
             ),
+
+
 
             SizedBox(width: 20),
 
@@ -1453,9 +1495,6 @@ Widget _buildSellerChatDetailsUI(BuildContext context, String? personName,
   );
 }
 
-
-
-
 Widget _buildDetailsContainer(BuildContext context, String accountHolder,
     String accountNumber, String bankName, String amount,
     {required bool isChatDetails}) {
@@ -1613,13 +1652,10 @@ class HeaderContainer extends StatelessWidget {
                     children: [
                       Text('Sale: ',
                           style: GoogleFonts.poppins(fontSize: 10.sp)),
-
-                          Divider(
-                            thickness: 1.0,
-                            height: 1.5,
-                            
-                          ),
-
+                      Divider(
+                        thickness: 1.0,
+                        height: 1.5,
+                      ),
                       Text(' ${sellingPrice!.toStringAsFixed(2)}',
                           style: GoogleFonts.poppins(
                               fontSize: 12.sp, color: Colors.white)),
@@ -1646,10 +1682,12 @@ class HeaderContainer extends StatelessWidget {
   }
 }
 
-
 Widget _buildTradeStatsContainer(
-    BuildContext context, int totalTrades, int tradesMarkedAutomatic,
-    int tradesMarkedWithNumbers, double averageSpeed) {
+    BuildContext context,
+    int totalTrades,
+    int tradesMarkedAutomatic,
+    int tradesMarkedWithNumbers,
+    double averageSpeed) {
   return Column(
     children: [
       Container(
@@ -1668,25 +1706,22 @@ Widget _buildTradeStatsContainer(
                 "Trade Stats",
                 style: GoogleFonts.poppins(
                   textStyle: TextStyle(
-                    fontSize: 10.sp, 
+                    fontSize: 10.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-
               SizedBox(height: 2.h),
-      
               _buildStatRow('Total Trades: ', totalTrades.toString(), 5.sp),
               Divider(),
-      
-              _buildStatRow('Trades Unmarked: ', tradesMarkedAutomatic.toString(), 5.sp),
+              _buildStatRow(
+                  'Trades Unmarked: ', tradesMarkedAutomatic.toString(), 5.sp),
               Divider(),
-      
-              _buildStatRow('Trades Marked: ', tradesMarkedWithNumbers.toString(), 5.sp),
+              _buildStatRow(
+                  'Trades Marked: ', tradesMarkedWithNumbers.toString(), 5.sp),
               Divider(),
-      
-              _buildStatRow('Total Speed: ', '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
-
+              _buildStatRow('Total Speed: ',
+                  '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
             ],
           ),
         ),
@@ -1694,7 +1729,6 @@ Widget _buildTradeStatsContainer(
     ],
   );
 }
-
 
 Widget _buildStatRow(String title, String value, double fontSize) {
   return Row(

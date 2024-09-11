@@ -127,6 +127,7 @@ class _AdminHomeState extends State<AdminHome> {
             children: [
 
 Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
   children: [
 
     AContainer(
@@ -140,69 +141,107 @@ Row(
       backgroundColor: Colors.blue,
     ),
 
-   // SizedBox(width: 20),
+    SizedBox(width: 60),
 
     // Spacing between the two widgets
 
 Expanded(
-  child: Container(
-    height: 200,
-    child: BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: 100,
-        barTouchData: BarTouchData(enabled: false),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40, // Adjust the size to fit your titles
-              getTitlesWidget: (value, meta) {
-                final int index = value.toInt();
-                if (index >= 0 && index < staffStatistics.length) {
-                  return Text(
-                    staffStatistics[index]['staffId'] ?? 'N/A',
-                    style: TextStyle(fontSize: 14),
-                  );
-                }
-                return Container();
-              },
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Text("Points at a",style: GoogleFonts.montserrat(),),
+          SizedBox(width: 10,),
+          Text("Glance",style: GoogleFonts.montserrat(
+            color: Colors.blue,
+            fontWeight: FontWeight.w600
+          ),),
+        ],
+      ),
+      
+      SizedBox(height: 10,),
+
+      Container(
+        height: 220,
+        decoration: BoxDecoration(
+          border: Border.all(width: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          //color: const Color.fromARGB(255, 68, 64, 64)
+        ),
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: 150, // Set maxY as your target value
+            barTouchData: BarTouchData(enabled: false),
+            gridData: FlGridData(show: false), // Hide the dotted lines
+            titlesData: FlTitlesData(
+              show: true,
+              topTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false), // Hide numbers at the top
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40, // Adjust the size to fit your titles
+                  getTitlesWidget: (value, meta) {
+                    final int index = value.toInt();
+                    if (index >= 0 && index < staffStatistics.length) {
+                      return Text(
+                        staffStatistics[index]['staffId'] ?? 'N/A',
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black
+                        )
+                      );
+                    }
+                    return Container();
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false), // Hide numbers on the left
+              ),
+              rightTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false), // Hide numbers on the right
+              ),
             ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false), // Hide left titles (numbers)
+            borderData: FlBorderData(show: false), // Remove borders if necessary
+            barGroups: List.generate(staffStatistics.length, (index) {
+              final staff = staffStatistics[index];
+              final performanceScore = double.tryParse(staff['performanceScore'] ?? '0.0') ?? 0.0;
+        
+              return BarChartGroupData(
+                x: index,
+                barRods: [
+                  // Background bar representing the full bar (target)
+                  BarChartRodData(
+                    toY: 100, // Full bar (target)
+                    color: Colors.black, // Background color for full bar
+                    width: 15,
+                  ),
+                  // Foreground bar representing the user's actual score
+                  BarChartRodData(
+                    toY: performanceScore.clamp(1.0, double.infinity), // Actual performance score
+                    color: Colors.orange, // Color for the user's score
+                    width: 15,
+                  ),
+                ],
+              );
+            }),
           ),
         ),
-        borderData: FlBorderData(show: false),
-        barGroups: List.generate(staffStatistics.length, (index) {
-          final staff = staffStatistics[index];
-          final performanceScore = double.tryParse(staff['performanceScore'] ?? '0.0') ?? 0.0;
-
-          return BarChartGroupData(
-            x: index,
-            barRods: [
-              BarChartRodData(
-                toY: performanceScore.clamp(1.0, double.infinity), // Ensure value is at least 1.0
-                color: Colors.blue, // You might want to vary colors if needed
-                width: 15,
-              ),
-            ],
-          );
-        }),
       ),
-    ),
+    ],
   ),
 )
 
 
-
-    
   ],
 ),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
