@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:bdesktop/widgets/newtimer.dart';
 import 'package:bdesktop/widgets/paid.dart';
+import 'package:bdesktop/widgets/timer.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -459,62 +460,61 @@ class _PayersState extends State<Payers> {
     }
   }
 
-Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+    try {
+      // API request to mark the trade as paid
+      final response = await http.post(
+        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'trade_hash': selectedTradeHash,
+          'markedAt':
+              stopwatch.elapsed.inSeconds.toString(), // Use elapsed seconds
+          'amountPaid': fiatAmount,
+        }),
+      );
 
-  try {
-    // API request to mark the trade as paid
-    final response = await http.post(
-      Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'trade_hash': selectedTradeHash,
-        'markedAt': stopwatch.elapsed.inSeconds.toString(), // Use elapsed seconds
-        'amountPaid': fiatAmount,
-      }),
-    );
+      if (response.statusCode == 200) {
+        print(">>>>> Marked ${response.body}");
 
-    if (response.statusCode == 200) {
-      print(">>>>> Marked ${response.body}");
+        // Remove the trade from staff's assigned trades
+        await FirebaseFirestore.instance
+            .collection('staff')
+            .doc(loggedInStaffID)
+            .update({
+          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+        });
 
-      // Remove the trade from staff's assigned trades
-      await FirebaseFirestore.instance
-          .collection('staff')
-          .doc(loggedInStaffID)
-          .update({
-        'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
-      });
+        // Update the trade as paid in Firestore
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(selectedTradeHash)
+            .update({
+          'isPaid': true,
+        });
 
-      // Update the trade as paid in Firestore
-      await FirebaseFirestore.instance
-          .collection('trades')
-          .doc(selectedTradeHash)
-          .update({
-        'isPaid': true,
-      });
+        // Reset UI elements and start listening for new trades
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedTradeHash = null;
+              countdownComplete = true;
+              stopwatch.reset(); // Reset the stopwatch after marking the trade
+              Countdown.reset(); // Assuming you have a countdown to reset
+            });
+          }
+        });
 
-      // Reset UI elements and start listening for new trades
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            selectedTradeHash = null;
-            countdownComplete = true;
-            stopwatch.reset(); // Reset the stopwatch after marking the trade
-            Countdown.reset(); // Assuming you have a countdown to reset
-          });
-        }
-      });
-
-      setState(() {
-        selectedTradeHash = null; // Reset selected trade
-      });
-    } else {
-      print('Failed to mark trade as paid: ${response.body}');
+        setState(() {
+          selectedTradeHash = null; // Reset selected trade
+        });
+      } else {
+        print('Failed to mark trade as paid: ${response.body}');
+      }
+    } catch (e) {
+      print('Error making API call: $e');
     }
-  } catch (e) {
-    print('Error making API call: $e');
   }
-}
-
 
   Future<Map<String, dynamic>> getTradeStats() async {
     int totalTrades = 0;
@@ -816,16 +816,54 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
         remainingTime); // Save the remaining time for the trade
   }
 
-Future<int?> getSavedCountdownTime(String tradeHash) async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getInt('countdown_$tradeHash'); // Return saved countdown time
-}
-
+  Future<int?> getSavedCountdownTime(String tradeHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('countdown_$tradeHash'); // Return saved countdown time
+  }
 
   Future<void> clearCountdownTime(String tradeHash) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs
         .remove('countdown_$tradeHash'); // Clear the saved countdown time
+  }
+
+  int elapsedTime = 0;
+  TimerService? _timerService;
+
+  Future<void> _restoreTimerState() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? tradeHash = prefs.getString('selectedTradeHash');
+    int storedElapsedTime =
+        prefs.getInt('elapsedTime') ?? 0; // Ensure a default value
+
+    // Only proceed if there's a valid tradeHash
+    if (tradeHash != null) {
+      setState(() {
+        selectedTradeHash = tradeHash;
+        elapsedTime = storedElapsedTime; // Initialize elapsedTime
+
+        // Cancel any existing timer
+        printTimer?.cancel();
+
+        // Start a new timer if there's stored elapsed time
+        if (elapsedTime > 0) {
+          printTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+            setState(() {
+              elapsedTime++; // Increment elapsedTime
+              prefs.setInt(
+                  'elapsedTime', elapsedTime); // Update in SharedPreferences
+              print('Elapsed time: $elapsedTime seconds');
+            });
+          });
+        }
+      });
+    }
+  }
+
+  Future<void> _updateTimerState(String tradeHash, int elapsedTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('selectedTradeHash', tradeHash);
+    prefs.setInt('elapsedTime', elapsedTime);
   }
 
   @override
@@ -837,6 +875,8 @@ Future<int?> getSavedCountdownTime(String tradeHash) async {
       selectedTradeHash = null;
     });
     calculatePrices();
+    // _restoreTimerState();
+    _timerService = TimerService((elapsedTime) {});
   }
 
   void _listenToStaffChanges() {
@@ -874,11 +914,12 @@ Future<int?> getSavedCountdownTime(String tradeHash) async {
         .listen((tradeSnapshot) {});
   }
 
-   Stopwatch stopwatch = Stopwatch();
-   Timer? printTimer;
+  Stopwatch stopwatch = Stopwatch();
+  Timer? printTimer;
 
   @override
   void dispose() {
+    _timerService?.stop();
     _staffSubscription.cancel();
     _tradeMessagesSubscription.cancel();
     _timer?.cancel();
@@ -896,7 +937,6 @@ Future<int?> getSavedCountdownTime(String tradeHash) async {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
-
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -949,185 +989,190 @@ Future<int?> getSavedCountdownTime(String tradeHash) async {
                 },
               ),
             ),
-            
             SizedBox(
               width: 4.w,
             ),
+            Expanded(
+              flex: 4,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('staff')
+                    .doc(loggedInStaffID)
+                    .snapshots(),
+                builder: (context, staffSnapshot) {
+                  if (staffSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+                    return Center(child: Text('No assigned trades'));
+                  }
 
-Expanded(
-  flex: 4,
-  child: StreamBuilder<DocumentSnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('staff')
-        .doc(loggedInStaffID)
-        .snapshots(),
-    builder: (context, staffSnapshot) {
-      if (staffSnapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
-      if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-        return Center(child: Text('No assigned trades'));
-      }
+                  final assignedTrades = List<Map<String, dynamic>>.from(
+                    staffSnapshot.data!['assignedTrades'] ?? [],
+                  );
 
-      final assignedTrades = List<Map<String, dynamic>>.from(
-        staffSnapshot.data!['assignedTrades'] ?? [],
-      );
+                  if (assignedTrades.isEmpty) {
+                    return Center(child: Text('No Trades assigned.'));
+                  }
 
-      if (assignedTrades.isEmpty) {
-        return Center(child: Text('No Trades assigned.'));
-      }
+                  // Filter out paid trades
+                  final unpaidTrades = assignedTrades
+                      .where((trade) => trade['isPaid'] == false)
+                      .toList();
 
-      // Filter out paid trades
-      final unpaidTrades = assignedTrades
-          .where((trade) => trade['isPaid'] == false)
-          .toList();
+                  if (unpaidTrades.isEmpty) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('No Assigned Trade Yet.'),
+                    );
+                  }
 
-      if (unpaidTrades.isEmpty) {
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Text('No Assigned Trade Yet.'),
-        );
-      }
+                  Map<String, dynamic> latestTrade = unpaidTrades.last;
+                  String latestTradeHash = latestTrade['trade_hash'];
 
-      Map<String, dynamic> latestTrade = unpaidTrades.last;
-      String latestTradeHash = latestTrade['trade_hash'];
+                  if (selectedTradeHash == null ||
+                      selectedTradeHash != latestTradeHash) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          selectedTradeHash = latestTradeHash;
+                        });
+                        // Start the timer
+                        _timerService?.start();
+                      }
+                    });
+                  }
 
-      if (selectedTradeHash == null || selectedTradeHash != latestTradeHash) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              selectedTradeHash = latestTradeHash;
-              stopwatch.reset(); // Reset the stopwatch
-              stopwatch.start();  // Start the stopwatch
-              printTimer?.cancel(); // Cancel any previous print timers
-              
-              // Start a new timer to print elapsed time every second
-              printTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-                print('Elapsed time: ${stopwatch.elapsed.inSeconds} seconds');
-              });
-            });
-          }
-        });
-      }
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('tradeMessages')
+                        .doc(selectedTradeHash ?? '')
+                        .snapshots(),
+                    builder: (context, tradeSnapshot) {
+                      if (tradeSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
 
-      return StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('tradeMessages')
-            .doc(selectedTradeHash)
-            .snapshots(),
-        builder: (context, tradeSnapshot) {
-          if (tradeSnapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+                      if (!tradeSnapshot.hasData ||
+                          !tradeSnapshot.data!.exists) {
+                        if (autoMarkPaidTimer == null) {
+                          autoMarkPaidTimer =
+                              Timer(Duration(seconds: 10), () async {
+                            if (!tradeSnapshot.hasData ||
+                                !tradeSnapshot.data!.exists) {
+                              await _markTradeAsPaid(context, 'Auto');
+                            }
+                          });
+                        }
+                      }
 
-          if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
-            if (autoMarkPaidTimer == null) {
-              autoMarkPaidTimer = Timer(Duration(seconds: 10), () async {
-                if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
-                  await _markTradeAsPaid(context, 'Auto');
-                }
-              });
-            }
-          }
+                      final tradeMessages =
+                          tradeSnapshot.data!.data() as Map<String, dynamic>? ??
+                              {};
+                      final messages = List<Map<String, dynamic>>.from(
+                          tradeMessages['messages'] ?? []);
 
-          final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+                      Map<String, dynamic>? bankDetails =
+                          _checkForBankDetails(messages);
 
-          Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
-
-          return Column(
-            children: [
-              Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(width: 0.5),
-                    ),
-                    width: MediaQuery.of(context).size.width - 20,
-                    height: 50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      return Column(
                         children: [
-                          FutureBuilder<double>(
-                            future: calculateAverageSpeed(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return CircularProgressIndicator();
-                              } else if (snapshot.hasError) {
-                                return Text('Error: ${snapshot.error}');
-                              } else if (snapshot.hasData) {
-                                return GestureDetector(
-                                  onTap: () {},
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(width: 0.5),
+                                ),
+                                width: MediaQuery.of(context).size.width - 20,
+                                height: 50,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
                                   child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Icon(
-                                        Icons.run_circle_sharp,
-                                        size: 50,
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Text(
-                                        '${snapshot.data!.toStringAsFixed(2)} sec',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black,
-                                        ),
+                                      FutureBuilder<double>(
+                                        future: calculateAverageSpeed(),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState ==
+                                              ConnectionState.waiting) {
+                                            return CircularProgressIndicator();
+                                          } else if (snapshot.hasError) {
+                                            return Text(
+                                                'Error: ${snapshot.error}');
+                                          } else if (snapshot.hasData) {
+                                            return GestureDetector(
+                                              onTap: () {},
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.run_circle_sharp,
+                                                    size: 50,
+                                                  ),
+                                                  SizedBox(
+                                                    width: 10,
+                                                  ),
+                                                  Text(
+                                                    '${snapshot.data!.toStringAsFixed(2)} sec',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          } else {
+                                            return Text('No data');
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
-                                );
-                              } else {
-                                return Text('No data');
-                              }
-                            },
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (bankDetails != null)
-                Column(
-                  children: [
-                    _buildSellerDetailsUI(
-                      context,
-                      bankDetails['holder_name'] ?? 'N/A',
-                      bankDetails['account_number'] ?? 'N/A',
-                      bankDetails['bank_name'] ?? 'N/A',
-                      latestTrade['fiat_amount_requested'] ?? 'N/A',
-                    )
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    _buildSellerChatDetailsUI(
-                      context,
-                      recentPersonName,
-                      recentAccountNumber,
-                      recentBankName,
-                      latestTrade['fiat_amount_requested'] ?? 'N/A',
-                    ),
-                  ],
-                ),
-
-
-
-Row(
+                          if (bankDetails != null)
+                            Column(
+                              children: [
+                                _buildSellerDetailsUI(
+                                  context,
+                                  bankDetails['holder_name'] ?? 'N/A',
+                                  bankDetails['account_number'] ?? 'N/A',
+                                  bankDetails['bank_name'] ?? 'N/A',
+                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
+                                )
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                _buildSellerChatDetailsUI(
+                                  context,
+                                  recentPersonName,
+                                  recentAccountNumber,
+                                  recentBankName,
+                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
+                                ),
+                              ],
+                            ),
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               GestureDetector(
                                 onTap: () async {
                                   fetchPaxfulrates();
+                                  print(_timerService!._elapsedTime);
+                                  _timerService!.stop();
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -1175,23 +1220,14 @@ Row(
                               )
                             ],
                           ),
-
-
-
-
-
-            ],
-          );
-        },
-      );
-    },
-  ),
-),
-
-
-
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
             SizedBox(width: 20),
-
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -1298,9 +1334,6 @@ Row(
                             },
                           ),
                         ),
-
-
-
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -1435,8 +1468,7 @@ Widget _buildFooterButtons(BuildContext context) {
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       GestureDetector(
-        onTap: () async {
-        },
+        onTap: () async {},
         child: _buildFooterButton(context, "To CC", Colors.black, Colors.white),
       ),
       GestureDetector(
@@ -1624,4 +1656,24 @@ Widget _buildStatRow(String title, String value, double fontSize) {
       ),
     ],
   );
+}
+
+class TimerService {
+  Timer? _timer;
+  int _elapsedTime = 0;
+  final void Function(int) onTick;
+
+  TimerService(this.onTick);
+
+  void start() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      _elapsedTime++;
+      onTick(_elapsedTime);
+      print('Elapsed time: $_elapsedTime seconds'); // Print to console
+    });
+  }
+
+  void stop() {
+    _timer?.cancel();
+  }
 }
