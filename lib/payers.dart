@@ -989,9 +989,11 @@ class _PayersState extends State<Payers> {
                 },
               ),
             ),
+           
             SizedBox(
               width: 4.w,
             ),
+
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -1227,7 +1229,10 @@ class _PayersState extends State<Payers> {
                 },
               ),
             ),
+
+
             SizedBox(width: 20),
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -1657,6 +1662,7 @@ Widget _buildStatRow(String title, String value, double fontSize) {
     ],
   );
 }
+
 
 class TimerService {
   Timer? _timer;
