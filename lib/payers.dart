@@ -459,66 +459,62 @@ class _PayersState extends State<Payers> {
     }
   }
 
-  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
-    if (countdownStartTime == null) {
-      print("Countdown has not started yet!");
-      return;
+Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+
+  try {
+    // API request to mark the trade as paid
+    final response = await http.post(
+      Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'trade_hash': selectedTradeHash,
+        'markedAt': stopwatch.elapsed.inSeconds.toString(), // Use elapsed seconds
+        'amountPaid': fiatAmount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print(">>>>> Marked ${response.body}");
+
+      // Remove the trade from staff's assigned trades
+      await FirebaseFirestore.instance
+          .collection('staff')
+          .doc(loggedInStaffID)
+          .update({
+        'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+      });
+
+      // Update the trade as paid in Firestore
+      await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(selectedTradeHash)
+          .update({
+        'isPaid': true,
+      });
+
+      // Reset UI elements and start listening for new trades
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            selectedTradeHash = null;
+            countdownComplete = true;
+            stopwatch.reset(); // Reset the stopwatch after marking the trade
+            Countdown.reset(); // Assuming you have a countdown to reset
+          });
+        }
+      });
+
+      setState(() {
+        selectedTradeHash = null; // Reset selected trade
+      });
+    } else {
+      print('Failed to mark trade as paid: ${response.body}');
     }
-
-    DateTime tradePaidTime = DateTime.now();
-    Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
-    print(">>>>>> PAID AFTER : ${timeTaken.inSeconds} seconds");
-
-    try {
-      
-      final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': selectedTradeHash,
-          //'markedAt': '${timeTaken.inSeconds}',
-          'markedAt': stopwatch.elapsed.inSeconds,
-          'amountPaid': fiatAmount,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        print(">>>>> Marked ${response.body}");
-
-        await FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .update({
-          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
-        });
-
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({
-          'isPaid': true,
-        });
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              selectedTradeHash = null;
-              countdownComplete = true;
-              Countdown.reset();
-            });
-          }
-        });
-
-        setState(() {
-          selectedTradeHash = null;
-        });
-      } else {
-        print('Failed to mark trade as paid: ${response.body}');
-      }
-    } catch (e) {
-      print('Error making API call: $e');
-    }
+  } catch (e) {
+    print('Error making API call: $e');
   }
+}
+
 
   Future<Map<String, dynamic>> getTradeStats() async {
     int totalTrades = 0;
@@ -1123,69 +1119,67 @@ Expanded(
                     ),
                   ],
                 ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      fetchPaxfulrates();
-                    },
-                    child: Container(
-                      height: 30,
-                      width: 120,
-                      child: Center(
-                        child: Text(
-                          "To CC",
-                          style: GoogleFonts.poppins(color: Colors.white),
-                        ),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white),
-                      ),
-                    ),
-                  ),
 
-                  
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) {
-                          return ConfirmPayDialog(
-                            onConfirm: () {
-                              stopwatch.stop();
-                              printTimer?.cancel(); // Stop the periodic timer
-                              print('Trade marked as paid at ${stopwatch.elapsed.inSeconds} seconds');
-                              _markTradeAsPaid(context, widget.username);
-                              Navigator.pop(context);
-                            },
-                            onCancel: () {
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      );
-                    },
-                    child: Container(
-                      height: 30,
-                      width: 120,
-                      child: Center(
-                        child: Text(
-                          "Mark Paid",
-                          style: GoogleFonts.poppins(color: Colors.black),
-                        ),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.black),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+
+
+Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  fetchPaxfulrates();
+                                },
+                                child: Container(
+                                  height: 4.h,
+                                  width: 30.w,
+                                  child: Center(
+                                      child: Text(
+                                    "To CC",
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white),
+                                  )),
+                                  decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.white)),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return ConfirmPayDialog(onConfirm: () {
+                                          _markTradeAsPaid(
+                                              context, widget.username);
+                                          Navigator.pop(context);
+                                        }, onCancel: () {
+                                          Navigator.pop(context);
+                                        });
+                                      });
+                                },
+                                child: Container(
+                                  height: 4.h,
+                                  width: 30.w,
+                                  child: Center(
+                                      child: Text(
+                                    "Mark Paid",
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.black),
+                                  )),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.black)),
+                                ),
+                              )
+                            ],
+                          ),
+
+
+
+
+
             ],
           );
         },
