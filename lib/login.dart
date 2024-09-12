@@ -55,22 +55,31 @@ Future<void> _checkAndProceed(BuildContext context) async {
     if (staffDoc.exists) {
       await _saveUsernameToPrefs(username);  // Save username
 
-      // Navigate based on platform
-      if (Platform.isWindows) {
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => Payers(username: username),
           ),
         );
-      } else if (Platform.isAndroid) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Apphome(username: username),
-          ),
-        );
-      }
+
+
+      // Navigate based on platform
+      // if (Platform.isWindows) {
+      //   Navigator.push(
+      //     context,
+      //     MaterialPageRoute(
+      //       builder: (context) => Payers(username: username),
+      //     ),
+      //   );
+      // } else if (Platform.isAndroid) {
+      //   Navigator.push(
+      //     context,
+      //     MaterialPageRoute(
+      //       builder: (context) => Apphome(username: username),
+      //     ),
+      //   );
+      // }
 
     } else {
       bool success = await _addStaff(username);
@@ -78,22 +87,43 @@ Future<void> _checkAndProceed(BuildContext context) async {
       if (success) {
         await _saveUsernameToPrefs(username);  // Save username
 
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Payers(username: username),
+          ),
+        );
+
+        
         // Navigate based on platform
-        if (Platform.isWindows) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Payers(username: username),
-            ),
-          );
-        } else if (Platform.isAndroid) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Apphome(username: username),
-            ),
-          );
-        }
+        // if (Platform.isWindows) {
+        //   Navigator.push(
+        //     context,
+        //     MaterialPageRoute(
+        //       builder: (context) => Payers(username: username),
+        //     ),
+        //   );
+        // } else if (Platform.isAndroid) {
+
+        //   Navigator.push(
+        //     context,
+        //     MaterialPageRoute(
+        //       builder: (context) => Apphome(username: username),
+        //     ),
+        //   );
+
+
+        // }else{
+
+        //  Navigator.push(
+        //     context,
+        //     MaterialPageRoute(
+        //       builder: (context) => Apphome(username: username),
+        //     ),
+        //   );
+
+        // }
       }
     }
   } catch (e) {
@@ -156,6 +186,7 @@ Future<void> _checkAndProceed(BuildContext context) async {
                 ),
               ),
               // Main content
+              
               Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

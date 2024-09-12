@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/widgets/newtimer.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
@@ -478,7 +477,7 @@ class _PayersState extends State<Payers> {
         body: jsonEncode({
           'trade_hash': selectedTradeHash,
           //'markedAt': '${timeTaken.inSeconds}',
-          'markedAt': Loadingtime,
+          'markedAt': stopwatch.elapsed.inSeconds,
           'amountPaid': fiatAmount,
         }),
       );
@@ -821,17 +820,11 @@ class _PayersState extends State<Payers> {
         remainingTime); // Save the remaining time for the trade
   }
 
-  Future<int?> getSavedCountdownTime(String tradeHash) async {
-    final prefs = await SharedPreferences.getInstance();
-    int? countdownTime = await getSavedCountdownTime(tradeHash);
-    setState(() {
-      Loadingtime = countdownTime;
-      print(" loading Time $Loadingtime");
-    });
+Future<int?> getSavedCountdownTime(String tradeHash) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('countdown_$tradeHash'); // Return saved countdown time
+}
 
-    return prefs
-        .getInt('countdown_$tradeHash'); // Retrieve the saved remaining time
-  }
 
   Future<void> clearCountdownTime(String tradeHash) async {
     final prefs = await SharedPreferences.getInstance();
@@ -885,6 +878,9 @@ class _PayersState extends State<Payers> {
         .listen((tradeSnapshot) {});
   }
 
+   Stopwatch stopwatch = Stopwatch();
+   Timer? printTimer;
+
   @override
   void dispose() {
     _staffSubscription.cancel();
@@ -904,6 +900,7 @@ class _PayersState extends State<Payers> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
+
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -956,360 +953,246 @@ class _PayersState extends State<Payers> {
                 },
               ),
             ),
+            
             SizedBox(
               width: 4.w,
             ),
-            Expanded(
-              flex: 4,
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('staff')
-                    .doc(loggedInStaffID)
-                    .snapshots(),
-                builder: (context, staffSnapshot) {
-                  if (staffSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-                    return Center(child: Text('No assigned trades'));
-                  }
 
-                  final assignedTrades = List<Map<String, dynamic>>.from(
-                    staffSnapshot.data!['assignedTrades'] ?? [],
-                  );
+Expanded(
+  flex: 4,
+  child: StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('staff')
+        .doc(loggedInStaffID)
+        .snapshots(),
+    builder: (context, staffSnapshot) {
+      if (staffSnapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
+      if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+        return Center(child: Text('No assigned trades'));
+      }
 
-                  if (assignedTrades.isEmpty) {
-                    return Center(child: Text('No Trades assigned.',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w400,
-                      fontSize: 12.sp
-                    ),));
-                  }
-
-                  // Filter out paid trades
-                  final unpaidTrades = assignedTrades
-                      .where((trade) => trade['isPaid'] == false)
-                      .toList();
-
-                  if (unpaidTrades.isEmpty) {
-                    return Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'No Assigned Trade Yet.',
-                          style: GoogleFonts.poppins(fontSize: 10.sp),
-                        ));
-                  }
-
-                  Map<String, dynamic> latestTrade = unpaidTrades.last;
-                  String latestTradeHash = latestTrade['trade_hash'];
-
-                  if (selectedTradeHash == null ||
-                      selectedTradeHash != latestTradeHash) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() {
-                          selectedTradeHash = latestTradeHash;
-                          countdownComplete =
-                              false; // Reset countdown complete status
-                        });
-                      }
-                    });
-                  }
-
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('tradeMessages')
-                        .doc(selectedTradeHash)
-                        .snapshots(),
-                    builder: (context, tradeSnapshot) {
-                      if (tradeSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-
-                      if (!tradeSnapshot.hasData ||
-                          !tradeSnapshot.data!.exists) {
-                        if (autoMarkPaidTimer == null) {
-                          autoMarkPaidTimer =
-                              Timer(Duration(seconds: 10), () async {
-                            if (!tradeSnapshot.hasData ||
-                                !tradeSnapshot.data!.exists) {
-                              await _markTradeAsPaid(context, 'Auto');
-                            }
-                          });
-                        }
-                      }
-
-                      final tradeMessages =
-                          tradeSnapshot.data!.data() as Map<String, dynamic>? ??
-                              {};
-                      final messages = List<Map<String, dynamic>>.from(
-                          tradeMessages['messages'] ?? []);
-
-                      Map<String, dynamic>? bankDetails =
-                          _checkForBankDetails(messages);
-
-                      return Column(
-                        children: [
-
-                          Align(
-                            alignment: Alignment.topLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(width: 0.5),
-                                  ),
-                                width: MediaQuery.of(context).size.width-20.w,
-                                height: 7.h,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 7),
-                                            child: StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('Duration')
-          .doc('Duration')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
-        }
-
-        if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
-        }
-
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return Text('No duration data found');
-        }
-
-        // Get the duration value from Firestore
-        int durationFromFirestore = snapshot.data!['Duration'] ?? 12;
-
-        return Padding(
-          padding: const EdgeInsets.only(left: 7),
-          child: CircularCountDownTimer(
-            key: ValueKey(selectedTradeHash),
-            width: 35,
-            height: 35,
-            duration: durationFromFirestore,
-            fillColor: Colors.black,
-            ringColor: Colors.blue,
-            controller: _countdownController,
-            autoStart: true,
-            onStart: () {
-              countdownStartTime = DateTime.now();
-              //print("Countdown started at: $countdownStartTime");
-            },
-onComplete: () async {
-  DateTime tradePaidTime = DateTime.now();
-  Duration timeTaken = tradePaidTime.difference(countdownStartTime!);
-
-  if (isVerified == true) {
-    try {
-      // Delay by 2 seconds before marking the trade as paid
-      await Future.delayed(Duration(seconds: 2));
-
-      final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': latestTradeHash,
-          'markedAt': 'Automatic',
-          'amountPaid': latestTrade['fiat_amount_requested']
-        }),
+      final assignedTrades = List<Map<String, dynamic>>.from(
+        staffSnapshot.data!['assignedTrades'] ?? [],
       );
 
-      if (response.statusCode == 200) {
-        // Mark trade as paid in Firestore
-        await FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .update({
-          'assignedTrades': FieldValue.arrayRemove([latestTrade]),
-        });
+      if (assignedTrades.isEmpty) {
+        return Center(child: Text('No Trades assigned.'));
+      }
 
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(latestTradeHash)
-            .update({
-          'isPaid': true,
-        });
+      // Filter out paid trades
+      final unpaidTrades = assignedTrades
+          .where((trade) => trade['isPaid'] == false)
+          .toList();
 
-        // Reset UI state and wait for the next trade
+      if (unpaidTrades.isEmpty) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Text('No Assigned Trade Yet.'),
+        );
+      }
+
+      Map<String, dynamic> latestTrade = unpaidTrades.last;
+      String latestTradeHash = latestTrade['trade_hash'];
+
+      if (selectedTradeHash == null || selectedTradeHash != latestTradeHash) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
-              selectedTradeHash = null;
-              _countdownController.reset();
+              selectedTradeHash = latestTradeHash;
+              stopwatch.reset(); // Reset the stopwatch
+              stopwatch.start();  // Start the stopwatch
+              printTimer?.cancel(); // Cancel any previous print timers
+              
+              // Start a new timer to print elapsed time every second
+              printTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+                print('Elapsed time: ${stopwatch.elapsed.inSeconds} seconds');
+              });
             });
           }
         });
-      } else {
-        print('Failed to mark trade as paid: ${response.body}');
       }
-    } catch (e) {
-      print('Error making API calls: $e');
-    }
-  } else {
-    print('Invalid Account');
-  }
-}
-          ),
-        );
-      },
-    ),
-                                          ),
 
-                                         SizedBox(width: 3.w,),
+      return StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tradeMessages')
+            .doc(selectedTradeHash)
+            .snapshots(),
+        builder: (context, tradeSnapshot) {
+          if (tradeSnapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-                                         Text("Countdown",style: GoogleFonts.poppins(
-                                          fontSize: 7.sp,
-                                          fontWeight: FontWeight.w500
-                                         ),)
-
-                                        ],
-                                      ),
-
-            FutureBuilder<double>(
-              future: calculateAverageSpeed(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (snapshot.hasData) {
-                  return GestureDetector(
-                    onTap: () {
-                  
-                    },
-                    child: Row(
-                      children: [
-                        Icon(Icons.run_circle_sharp,size: 50,),
-                        SizedBox(width: 3.w,),
-                        Text(
-                          '${snapshot.data!.toStringAsFixed(2)} sec',
-                          style: GoogleFonts.poppins(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black
-                              ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  return Text('No data');
+          if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
+            if (autoMarkPaidTimer == null) {
+              autoMarkPaidTimer = Timer(Duration(seconds: 10), () async {
+                if (!tradeSnapshot.hasData || !tradeSnapshot.data!.exists) {
+                  await _markTradeAsPaid(context, 'Auto');
                 }
-              },
-            ),
+              });
+            }
+          }
+
+          final tradeMessages = tradeSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final messages = List<Map<String, dynamic>>.from(tradeMessages['messages'] ?? []);
+
+          Map<String, dynamic>? bankDetails = _checkForBankDetails(messages);
+
+          return Column(
+            children: [
+              Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(width: 0.5),
+                    ),
+                    width: MediaQuery.of(context).size.width - 20,
+                    height: 50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FutureBuilder<double>(
+                            future: calculateAverageSpeed(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return CircularProgressIndicator();
+                              } else if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              } else if (snapshot.hasData) {
+                                return GestureDetector(
+                                  onTap: () {},
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.run_circle_sharp,
+                                        size: 50,
+                                      ),
+                                      SizedBox(
+                                        width: 10,
+                                      ),
+                                      Text(
+                                        '${snapshot.data!.toStringAsFixed(2)} sec',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-
-                          if (bankDetails != null)
-                            Column(
-                              children: [                           
-                                _buildSellerDetailsUI(
-                                  context,
-                                  bankDetails['holder_name'] ?? 'N/A',
-                                  bankDetails['account_number'] ?? 'N/A',
-                                  bankDetails['bank_name'] ?? 'N/A',
-                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
-                                )
-                              ],
-                            )
-                          else
-                            Column(
-                              children: [
-                                _buildSellerChatDetailsUI(
-                                  context,
-                                  recentPersonName,
-                                  recentAccountNumber,
-                                  recentBankName,
-                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
-                                ),
-                              ],
-                            ),
-
-                          ///UPDATEZ
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              GestureDetector(
-                                onTap: () async {
-                                  fetchPaxfulrates();
-                                },
-                                child: Container(
-                                  height: 4.h,
-                                  width: 30.w,
-                                  child: Center(
-                                      child: Text(
-                                    "To CC",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.white),
-                                  )),
-                                  decoration: BoxDecoration(
-                                      color: Colors.black,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.white)),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return ConfirmPayDialog(onConfirm: () {
-                                          _markTradeAsPaid(
-                                              context, widget.username);
-                                          Navigator.pop(context);
-                                        }, onCancel: () {
-                                          Navigator.pop(context);
-                                        });
-                                      });
-                                },
-                                child: Container(
-                                  height: 4.h,
-                                  width: 30.w,
-                                  child: Center(
-                                      child: Text(
-                                    "Mark Paid",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black),
-                                  )),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.black)),
-                                ),
-                              ),
-                            ],
+                                );
+                              } else {
+                                return Text('No data');
+                              }
+                            },
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (bankDetails != null)
+                Column(
+                  children: [
+                    _buildSellerDetailsUI(
+                      context,
+                      bankDetails['holder_name'] ?? 'N/A',
+                      bankDetails['account_number'] ?? 'N/A',
+                      bankDetails['bank_name'] ?? 'N/A',
+                      latestTrade['fiat_amount_requested'] ?? 'N/A',
+                    )
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    _buildSellerChatDetailsUI(
+                      context,
+                      recentPersonName,
+                      recentAccountNumber,
+                      recentBankName,
+                      latestTrade['fiat_amount_requested'] ?? 'N/A',
+                    ),
+                  ],
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      fetchPaxfulrates();
+                    },
+                    child: Container(
+                      height: 30,
+                      width: 120,
+                      child: Center(
+                        child: Text(
+                          "To CC",
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white),
+                      ),
+                    ),
+                  ),
+
+                  
+                  GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return ConfirmPayDialog(
+                            onConfirm: () {
+                              stopwatch.stop();
+                              printTimer?.cancel(); // Stop the periodic timer
+                              print('Trade marked as paid at ${stopwatch.elapsed.inSeconds} seconds');
+                              _markTradeAsPaid(context, widget.username);
+                              Navigator.pop(context);
+                            },
+                            onCancel: () {
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
                       );
                     },
-                  );
-                },
+                    child: Container(
+                      height: 30,
+                      width: 120,
+                      child: Center(
+                        child: Text(
+                          "Mark Paid",
+                          style: GoogleFonts.poppins(color: Colors.black),
+                        ),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
+          );
+        },
+      );
+    },
+  ),
+),
 
 
 
@@ -1421,6 +1304,9 @@ onComplete: () async {
                             },
                           ),
                         ),
+
+
+
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -1556,9 +1442,6 @@ Widget _buildFooterButtons(BuildContext context) {
     children: [
       GestureDetector(
         onTap: () async {
-          final player = AudioPlayer();
-          await player.play(
-              UrlSource('https://www.val9ja.com.ng/hottest/rema-hehehe/'));
         },
         child: _buildFooterButton(context, "To CC", Colors.black, Colors.white),
       ),

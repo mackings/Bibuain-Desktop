@@ -46,7 +46,6 @@ dependencies:
   http: ^1.2.1
   google_fonts: ^6.2.1
   sizer: ^2.0.15
-  audioplayers: ^6.0.0
   circular_countdown_timer: ^0.2.4
   shimmer: ^3.0.0
   shared_preferences: ^2.3.2
