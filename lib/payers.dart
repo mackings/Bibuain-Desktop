@@ -296,9 +296,8 @@ class _PayersState extends State<Payers> {
 
     try {
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
-        Kickstart();
+         _timerService!.start();
         final data = json.decode(response.body);
         final accountName = data['data']['account_name'];
         print('Verified >>> : $data');
@@ -321,7 +320,6 @@ class _PayersState extends State<Payers> {
               .add(recentAccountNumber!); // Add account to verified set
         });
       } else {
-        Kickstop();
         setState(() {
           isVerified = false;
         });
@@ -462,62 +460,63 @@ class _PayersState extends State<Payers> {
     }
   }
 
-  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
-    try {
-      // Retrieve elapsed time before stopping the timer
-      int elapsedTime = _timerService!.getElapsedTime();
 
-      // API request to mark the trade as paid
-      final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': selectedTradeHash,
-          'markedAt': '$elapsedTime', // Using the elapsed time
-          'amountPaid': fiatAmount,
-        }),
-      );
 
-      if (response.statusCode == 200) {
-        print(">>>>> Marked ${response.body}");
-        Kickstop(); // Stop the timer after the API request
+Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+  try {
+    // Retrieve elapsed time using the getter method before stopping the timer
+    int elapsedTime = _timerService!.getElapsedTime();
+    print("Marking at >>>>>>>>>>>>> $elapsedTime");
 
-        // Remove the trade from staff's assigned trades in Firestore
-        await FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .update({
-          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
-        });
+    final response = await http.post(
+      Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'trade_hash': selectedTradeHash,
+        'markedAt': '$elapsedTime', // Using the elapsed time
+        'amountPaid': fiatAmount,
+      }),
+    );
 
-        // Update the trade as paid in Firestore
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({
-          'isPaid': true,
-        });
+    if (response.statusCode == 200) {
+      print(">>>>> Marked ${response.body}");
+      _timerService!.stop(resetTime: true); 
 
-        // Reset UI elements and start listening for new trades
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              selectedTradeHash = null;
-              countdownComplete = true;
-            });
-          }
-        });
+      await FirebaseFirestore.instance
+          .collection('staff')
+          .doc(loggedInStaffID)
+          .update({
+        'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+      });
 
-        setState(() {
-          selectedTradeHash = null; // Reset selected trade
-        });
-      } else {
-        print('Failed to mark trade as paid: ${response.body}');
-      }
-    } catch (e) {
-      print('Error making API call: $e');
+      await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(selectedTradeHash)
+          .update({
+        'isPaid': true,
+      });
+
+      // Reset UI elements and start listening for new trades
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            selectedTradeHash = null;
+            countdownComplete = true;
+          });
+        }
+      });
+
+      setState(() {
+        selectedTradeHash = null; // Reset selected trade
+      });
+    } else {
+      print('Failed to mark trade as paid: ${response.body}');
     }
+  } catch (e) {
+    print('Error making API call: $e');
   }
+}
+
 
   Future<Map<String, dynamic>> getTradeStats() async {
     int totalTrades = 0;
@@ -810,9 +809,10 @@ class _PayersState extends State<Payers> {
   List<Map<String, dynamic>> assignedTrades = [];
   int? _durationFromFirestore;
   dynamic Loadingtime;
-
   Map<String, int> tradeCountdowns = {};
-  int elapsedTime = 0;
+
+
+
   TimerService? _timerService;
 
   void Kickstart() {
@@ -831,39 +831,11 @@ class _PayersState extends State<Payers> {
     }
   }
 
-  Future<void> _restoreTimerState() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? tradeHash = prefs.getString('selectedTradeHash');
-    int storedElapsedTime =
-        prefs.getInt('elapsedTime') ?? 0; // Ensure a default value
-
-    // Only proceed if there's a valid tradeHash
-    if (tradeHash != null) {
-      setState(() {
-        selectedTradeHash = tradeHash;
-        elapsedTime = storedElapsedTime; // Initialize elapsedTime
-
-        // Cancel any existing timer
-        printTimer?.cancel();
-
-        // Start a new timer if there's stored elapsed time
-        if (elapsedTime > 0) {
-          printTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-            setState(() {
-              elapsedTime++; // Increment elapsedTime
-              prefs.setInt(
-                  'elapsedTime', elapsedTime); // Update in SharedPreferences
-              print('Elapsed time: $elapsedTime seconds');
-            });
-          });
-        }
-      });
-    }
-  }
 
   @override
   void initState() {
     super.initState();
+    selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
     _listenToStaffChanges();
     setState(() {
@@ -916,7 +888,6 @@ class _PayersState extends State<Payers> {
     _timerService?.stop();
     _staffSubscription.cancel();
     _tradeMessagesSubscription.cancel();
-    _timer?.cancel();
     currentTradeNotifier.dispose();
     super.dispose();
   }
@@ -999,6 +970,8 @@ class _PayersState extends State<Payers> {
                     return Center(child: CircularProgressIndicator());
                   }
                   if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
+                    // Stop the timer when no trades are assigned
+                    _timerService?.stop();
                     return Center(child: Text('No assigned trades'));
                   }
 
@@ -1007,6 +980,8 @@ class _PayersState extends State<Payers> {
                   );
 
                   if (assignedTrades.isEmpty) {
+                    // Stop the timer when no trades are assigned
+                    _timerService?.stop();
                     return Center(child: Text('No Trades assigned.'));
                   }
 
@@ -1016,6 +991,9 @@ class _PayersState extends State<Payers> {
                       .toList();
 
                   if (unpaidTrades.isEmpty) {
+                    // Stop the timer when no unpaid trades exist
+                    _timerService?.stop();
+                    Kickstop();
                     return Align(
                       alignment: Alignment.centerRight,
                       child: Text('No Assigned Trade Yet.'),
@@ -1032,12 +1010,9 @@ class _PayersState extends State<Payers> {
                         setState(() {
                           selectedTradeHash = latestTradeHash;
                         });
-                        if (_timerService != null) {
-                          _timerService!.start();
-                        }
-                        // Start the timer
-                        //  _timerService!.start();
-                        // Kickstart();
+
+                        // Start the timer when a new trade is assigned
+                      //  _timerService?.start();
                       }
                     });
                   }
@@ -1109,17 +1084,18 @@ class _PayersState extends State<Payers> {
                                               onTap: () {},
                                               child: Row(
                                                 children: [
-                                                  CircularCountDownTimer(
-                                                      controller:
-                                                          _countdownController,
-                                                      onStart: () {
-                                                        // _timerService!.start();
-                                                      },
-                                                      width: 20,
-                                                      height: 20,
-                                                      duration: 30,
-                                                      fillColor: Colors.red,
-                                                      ringColor: Colors.black),
+                                                  // CircularCountDownTimer(
+                                                  //     controller: _countdownController,
+                                                  //     onStart: () {
+                                                  //       _timerService?.start();
+                                                  //     },
+                                                  //     width: 20,
+                                                  //     height: 20,
+                                                  //     duration: 30,
+                                                  //     fillColor: Colors.red,
+                                                  //     ringColor: Colors.black
+                                                  //     ),
+
                                                   Icon(
                                                     Icons.run_circle_sharp,
                                                     size: 50,
@@ -1179,10 +1155,9 @@ class _PayersState extends State<Payers> {
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  // fetchPaxfulrates();
+                                  // Fetch data logic
                                   print(_timerService!._elapsedTime);
-                                  _timerService!.stop();
-                                  // _timerService!.start();
+                                  _timerService?.stop();
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -1201,13 +1176,19 @@ class _PayersState extends State<Payers> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  //   _timerService!.start();
+                                  _timerService?.stop();
+                                  print(
+                                      " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
                                   showDialog(
                                       context: context,
                                       builder: (context) {
                                         return ConfirmPayDialog(onConfirm: () {
                                           _markTradeAsPaid(
                                               context, widget.username);
+                                          _timerService!.stop();
+                                          print(
+                                              "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
+
                                           Navigator.pop(context);
                                         }, onCancel: () {
                                           Navigator.pop(context);
@@ -1669,6 +1650,10 @@ Widget _buildStatRow(String title, String value, double fontSize) {
   );
 }
 
+
+
+
+
 class TimerService {
   Timer? _timer;
   int _elapsedTime = 0;
@@ -1678,16 +1663,17 @@ class TimerService {
 
   // Start the timer
   void start() {
-    _timer = Timer.periodic(Duration(seconds: 3), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
       _elapsedTime++;
       onTick(_elapsedTime);
       print('Elapsed time: $_elapsedTime seconds');
     });
   }
 
-  // Stop the timer and reset elapsed time if necessary
-  void stop({bool resetTime = true}) {
+  // Stop the timer without resetting elapsed time
+  void stop({bool resetTime = false}) {
     _timer?.cancel();
+    print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
     if (resetTime) {
       _elapsedTime = 0;
     }
@@ -1695,6 +1681,7 @@ class TimerService {
 
   int getElapsedTime() => _elapsedTime;
 }
+
 
 
 // class TimerService {
