@@ -1,17 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:bdesktop/widgets/newtimer.dart';
 import 'package:bdesktop/widgets/paid.dart';
-import 'package:bdesktop/widgets/timer.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class Payers extends StatefulWidget {
   final String username;
@@ -48,6 +44,7 @@ class _PayersState extends State<Payers> {
   Set<String> verifiedAccounts = {};
   int? sellingPrice;
   int? costPrice;
+  int? RealTime;
 
   Map<String, String> bankCodes = {
     "Abbey Mortgage Bank": "801",
@@ -275,6 +272,8 @@ class _PayersState extends State<Payers> {
     }
   }
 
+
+
   Future<void> _verifyAccount(BuildContext context) async {
     // Check if this account was already verified
     if (verifiedAccounts.contains(recentAccountNumber)) {
@@ -297,7 +296,9 @@ class _PayersState extends State<Payers> {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-         _timerService!.start();
+        //2   _timerService!.start();
+        _initializeTimer();
+
         final data = json.decode(response.body);
         final accountName = data['data']['account_name'];
         print('Verified >>> : $data');
@@ -460,27 +461,86 @@ class _PayersState extends State<Payers> {
     }
   }
 
+  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+    try {
+      int elapsedTime = _timerService!.getElapsedTime();
+      print("Marking at >>>>>>>>>>>>> $elapsedTime");
+
+      final response = await http.post(
+        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'trade_hash': selectedTradeHash,
+          'markedAt': '$elapsedTime', // Using the elapsed time
+          'amountPaid': fiatAmount,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print(">>>>> Marked ${response.body}");
+
+        //1   _timerService!.stop(resetTime: true);
+
+        await FirebaseFirestore.instance
+            .collection('staff')
+            .doc(loggedInStaffID)
+            .update({
+          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+        });
+
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(selectedTradeHash)
+            .update({
+          'isPaid': true,
+        });
+
+        // Reset UI elements and start listening for new trades
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedTradeHash = null;
+              countdownComplete = true;
+            });
+          }
+        });
+
+        setState(() {
+          selectedTradeHash = null; // Reset selected trade
+        });
+      } else {
+        print('Failed to mark trade as paid: ${response.body}');
+      }
+    } catch (e) {
+      print('Error making API call: $e');
+    }
+  }
 
 
-Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+Future<void> _markTradeAsPaids(BuildContext context, String username) async {
+  if (_timerService == null) {
+    print('Error: TimerService is not initialized.');
+    return;
+  }
+  
   try {
-    // Retrieve elapsed time using the getter method before stopping the timer
     int elapsedTime = _timerService!.getElapsedTime();
-    print("Marking at >>>>>>>>>>>>> $elapsedTime");
+    print("Auto Marking >>>>>>>>>>>>> $elapsedTime");
 
     final response = await http.post(
       Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'trade_hash': selectedTradeHash,
-        'markedAt': '$elapsedTime', // Using the elapsed time
+        'markedAt': 'Automatic', // Using the elapsed time
         'amountPaid': fiatAmount,
       }),
     );
 
     if (response.statusCode == 200) {
       print(">>>>> Marked ${response.body}");
-      _timerService!.stop(resetTime: true); 
+
+      _timerService!.stop(resetTime: true);
 
       await FirebaseFirestore.instance
           .collection('staff')
@@ -496,7 +556,6 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
         'isPaid': true,
       });
 
-      // Reset UI elements and start listening for new trades
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -810,9 +869,6 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
   int? _durationFromFirestore;
   dynamic Loadingtime;
   Map<String, int> tradeCountdowns = {};
-
-
-
   TimerService? _timerService;
 
   void Kickstart() {
@@ -831,10 +887,48 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
     }
   }
 
+Future<void> _initializeTimer() async {
+  int firestoreDuration = await _fetchDurationFromFirestore();
+  print('Fetched duration: $firestoreDuration');
+  
+  _timerService = TimerService(
+    onTick: (elapsedTime) {
+      // Handle tick updates here if needed
+    },
+    duration: firestoreDuration,
+    onComplete: () async {
+      await _markTradeAsPaids(context, widget.username);
+    },
+  );
+  print('_timerService initialized');
+  _timerService!.start(); // Ensure _timerService is not null here
+}
+
+
+  Future<int> _fetchDurationFromFirestore() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Duration')
+          .doc('Duration')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        return data?['Duration'] ?? 0;
+      } else {
+        print('No duration data found.');
+        return 0;
+      }
+    } catch (e) {
+      print('Error fetching duration from Firestore: $e');
+      return 0;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _fetchDurationFromFirestore();
     selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
     _listenToStaffChanges();
@@ -842,7 +936,7 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
       selectedTradeHash = null;
     });
     calculatePrices();
-    _timerService = TimerService((elapsedTime) {});
+    // _timerService = TimerService((elapsedTime) {});
   }
 
   void _listenToStaffChanges() {
@@ -1012,7 +1106,6 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
                         });
 
                         // Start the timer when a new trade is assigned
-                      //  _timerService?.start();
                       }
                     });
                   }
@@ -1085,16 +1178,18 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
                                               child: Row(
                                                 children: [
                                                   // CircularCountDownTimer(
-                                                  //     controller: _countdownController,
-                                                  //     onStart: () {
-                                                  //       _timerService?.start();
-                                                  //     },
-                                                  //     width: 20,
-                                                  //     height: 20,
-                                                  //     duration: 30,
-                                                  //     fillColor: Colors.red,
-                                                  //     ringColor: Colors.black
-                                                  //     ),
+                                                  //   controller:
+                                                  //       _countdownController,
+                                                  //   width: 20,
+                                                  //   height: 20,
+                                                  //   duration: 30,
+                                                  //   fillColor: Colors.red,
+                                                  //   ringColor: Colors.black,
+                                                  //   onChange: (value) {
+                                                  //     print(
+                                                  //         " Real Time Data is >>>>>> $RealTime");
+                                                  //   },
+                                                  // ),
 
                                                   Icon(
                                                     Icons.run_circle_sharp,
@@ -1154,11 +1249,7 @@ Future<void> _markTradeAsPaid(BuildContext context, String username) async {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               GestureDetector(
-                                onTap: () async {
-                                  // Fetch data logic
-                                  print(_timerService!._elapsedTime);
-                                  _timerService?.stop();
-                                },
+                                onTap: () async {},
                                 child: Container(
                                   height: 4.h,
                                   width: 30.w,
@@ -1650,23 +1741,30 @@ Widget _buildStatRow(String title, String value, double fontSize) {
   );
 }
 
-
-
-
-
 class TimerService {
   Timer? _timer;
   int _elapsedTime = 0;
   final void Function(int) onTick;
+  final int duration;
+  final Future<void> Function() onComplete;
 
-  TimerService(this.onTick);
+  TimerService({
+    required this.onTick,
+    required this.duration,
+    required this.onComplete,
+  });
 
   // Start the timer
   void start() {
-    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       _elapsedTime++;
       onTick(_elapsedTime);
       print('Elapsed time: $_elapsedTime seconds');
+
+      if (_elapsedTime >= duration) {
+        stop();
+        onComplete();
+      }
     });
   }
 
@@ -1682,7 +1780,51 @@ class TimerService {
   int getElapsedTime() => _elapsedTime;
 }
 
+// class TimerService {
+//   Timer? _timer;
+//   int _elapsedTime = 0;
+//   final void Function(int) onTick;
 
+//   TimerService(this.onTick);
+
+//   // Start the timer
+//   void start() {
+//     _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+//       _elapsedTime++;
+//       onTick(_elapsedTime);
+//       print('Elapsed time: $_elapsedTime seconds');
+//     });
+//   }
+
+//   // Stop the timer without resetting elapsed time
+//   void stop({bool resetTime = false}) {
+//     _timer?.cancel();
+//     print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
+//     if (resetTime) {
+//       _elapsedTime = 0;
+//     }
+//   }
+
+//   int getElapsedTime() => _elapsedTime;
+
+//   Future<void> _fetchDurationFromFirestore() async {
+//     try {
+//       final doc = await FirebaseFirestore.instance
+//           .collection('Duration')
+//           .doc('Duration')
+//           .get();
+
+//       if (doc.exists) {
+//         final data = doc.data();
+//         int firestoreDuration = data?['Duration'] ?? 0;
+//       } else {
+//         print('No duration data found.');
+//       }
+//     } catch (e) {
+//       print('Error fetching duration from Firestore: $e');
+//     }
+//   }
+// }
 
 // class TimerService {
 //   Timer? _timer;
