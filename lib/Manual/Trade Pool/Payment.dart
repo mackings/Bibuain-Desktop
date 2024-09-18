@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:bdesktop/login.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,16 +9,16 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
 
-class Payers extends StatefulWidget {
+class Payment extends StatefulWidget {
   final String username;
 
-  const Payers({Key? key, required this.username}) : super(key: key);
+  const Payment({Key? key, required this.username}) : super(key: key);
 
   @override
-  State<Payers> createState() => _PayersState();
+  State<Payment> createState() => _PayersState();
 }
 
-class _PayersState extends State<Payers> {
+class _PayersState extends State<Payment> {
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -258,7 +257,6 @@ class _PayersState extends State<Payers> {
         print(response.body);
         setState(() {
           _responseMessage = 'Message sent successfully.';
-          // _messageController.clear();
         });
       } else {
         print(response.body);
@@ -428,7 +426,7 @@ class _PayersState extends State<Payers> {
 
     try {
       final tradeDoc = await FirebaseFirestore.instance
-          .collection('trades')
+          .collection('manualsystem')
           .doc(selectedTradeHash)
           .get();
 
@@ -441,7 +439,7 @@ class _PayersState extends State<Payers> {
             .set(tradeData);
 
         await FirebaseFirestore.instance
-            .collection('trades')
+            .collection('manualsystem')
             .doc(selectedTradeHash)
             .update({'status': 'unresolved'});
 
@@ -458,69 +456,6 @@ class _PayersState extends State<Payers> {
         _responseMessage = 'An error occurred: $e';
       });
     }
-  }
-
-  Future<void> _removeTradeByHash() async {
-    if (selectedTradeHash == null) {
-      setState(() {
-        _responseMessage = 'No trade selected.';
-      });
-      return;
-    }
-
-    try {
-      // Check if the trade exists in Firestore
-      final tradeDoc = await FirebaseFirestore.instance
-          .collection('assignedTrades')
-          .doc(selectedTradeHash)
-          .get();
-
-      if (tradeDoc.exists) {
-        // Remove the trade from 'assignedTrades'
-        await FirebaseFirestore.instance
-            .collection('assignedTrades')
-            .doc(selectedTradeHash)
-            .delete();
-
-        setState(() {
-          _responseMessage =
-              'Trade removed successfully. Waiting for next trade.';
-          selectedTradeHash = null; // Reset selected trade hash
-          // Reset other UI elements or variables if needed
-          // Clear trade details, stop timers, etc.
-          _timerService?.stop(); // Stop any active timers
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Trade not found.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _responseMessage = 'An error occurred: $e';
-      });
-    }
-  }
-
-// Example function to wait for the next trade or handle logic for waiting
-  Future<void> _waitForNextTrade() async {
-    // Listen for updates from Firestore for new trades
-    FirebaseFirestore.instance
-        .collection('assignedTrades')
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        // Automatically select the next trade if one comes in
-        setState(() {
-          selectedTradeHash = snapshot.docs.first.id; // Assign the new trade
-          _responseMessage = 'New trade received: ${selectedTradeHash}';
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Waiting for new trades.';
-        });
-      }
-    });
   }
 
   Future<void> _markTradeAsPaid(BuildContext context, String username) async {
@@ -551,7 +486,7 @@ class _PayersState extends State<Payers> {
         });
 
         await FirebaseFirestore.instance
-            .collection('trades')
+            .collection('manualsystem')
             .doc(selectedTradeHash)
             .update({
           'isPaid': true,
@@ -562,6 +497,7 @@ class _PayersState extends State<Payers> {
           if (mounted) {
             setState(() {
               selectedTradeHash = null;
+              countdownComplete = true;
             });
           }
         });
@@ -573,9 +509,6 @@ class _PayersState extends State<Payers> {
         print('Failed to mark trade as paid: ${response.body}');
       }
     } catch (e) {
-      setState(() {
-        selectedTradeHash = null;
-      });
       print('Error making API call: $e');
     }
   }
@@ -693,7 +626,7 @@ class _PayersState extends State<Payers> {
     };
   }
 
-// TRADE MONEY FUNCTIONS END
+  // TRADE MONEY FUNCTIONS END
 
 //Paxful Rates
 
@@ -812,7 +745,6 @@ class _PayersState extends State<Payers> {
     }
   }
 
-
 //NOTIFIERS
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
@@ -883,7 +815,7 @@ class _PayersState extends State<Payers> {
     });
 
     setState(() {
-      // _remainingTime = 60;
+      _remainingTime = 60;
     });
   }
 
@@ -1052,34 +984,7 @@ class _PayersState extends State<Payers> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        actions: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedTradeHash = null;
-              });
-
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => LoginPage()));
-            },
-            child: Container(
-              height: 40,
-              width: 90,
-              decoration: BoxDecoration(
-                  color: Colors.black, borderRadius: BorderRadius.circular(10)),
-              child: Center(
-                  child: Text(
-                'Sign Out',
-                style: GoogleFonts.montserrat(
-                    fontWeight: FontWeight.w400, color: Colors.white),
-              )),
-            ),
-          ),
-          SizedBox(
-            width: 20,
-          )
-        ],
+        actions: [],
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
@@ -1140,8 +1045,6 @@ class _PayersState extends State<Payers> {
             SizedBox(
               width: 4.w,
             ),
-
-
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -1179,16 +1082,9 @@ class _PayersState extends State<Payers> {
                     // Stop the timer when no unpaid trades exist
                     _timerService?.stop();
                     Kickstop();
-
                     return Align(
-                      alignment: Alignment.center,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 150),
-                        child: Text(
-                          'No Assigned Trade Yet.',
-                          style: GoogleFonts.montserrat(),
-                        ),
-                      ),
+                      alignment: Alignment.centerRight,
+                      child: Text('No Assigned Trade Yet.'),
                     );
                   }
 
@@ -1210,8 +1106,8 @@ class _PayersState extends State<Payers> {
 
                   return StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('tradeMessages')
-                        .doc(selectedTradeHash)
+                        .collection('manualmessages')
+                        .doc(selectedTradeHash ?? '')
                         .snapshots(),
                     builder: (context, tradeSnapshot) {
                       if (tradeSnapshot.connectionState ==
@@ -1254,7 +1150,7 @@ class _PayersState extends State<Payers> {
                                   border: Border.all(width: 0.5),
                                 ),
                                 width: MediaQuery.of(context).size.width - 20,
-                                height: 70,
+                                height: 50,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Row(
@@ -1275,6 +1171,20 @@ class _PayersState extends State<Payers> {
                                               onTap: () {},
                                               child: Row(
                                                 children: [
+                                                  // CircularCountDownTimer(
+                                                  //   controller:
+                                                  //       _countdownController,
+                                                  //   width: 20,
+                                                  //   height: 20,
+                                                  //   duration: 30,
+                                                  //   fillColor: Colors.red,
+                                                  //   ringColor: Colors.black,
+                                                  //   onChange: (value) {
+                                                  //     print(
+                                                  //         " Real Time Data is >>>>>> $RealTime");
+                                                  //   },
+                                                  // ),
+
                                                   Icon(
                                                     Icons.run_circle_sharp,
                                                     size: 50,
@@ -1334,8 +1244,8 @@ class _PayersState extends State<Payers> {
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  _removeTradeByHash();
-                                  // _removeCurrentTrade();
+                                  //  _markAsComplaint();
+                                  print(selectedTradeHash);
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -1363,9 +1273,8 @@ class _PayersState extends State<Payers> {
                                         return ConfirmPayDialog(onConfirm: () {
                                           _markTradeAsPaid(
                                               context, widget.username);
-                                          _timerService!.stop();
-                                          print(
-                                              "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
+                                          // _timerService!.stop();
+                                          //   print( "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
 
                                           Navigator.pop(context);
                                         }, onCancel: () {
@@ -1400,6 +1309,7 @@ class _PayersState extends State<Payers> {
 
 
             SizedBox(width: 20),
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -1410,7 +1320,7 @@ class _PayersState extends State<Payers> {
                           child: StreamBuilder<DocumentSnapshot>(
                             key: ValueKey(selectedTradeHash),
                             stream: FirebaseFirestore.instance
-                                .collection('tradeMessages')
+                                .collection('manualmessages')
                                 .doc(selectedTradeHash)
                                 .snapshots(),
                             builder: (context, snapshot) {
@@ -1868,69 +1778,3 @@ class TimerService {
 
   int getElapsedTime() => _elapsedTime;
 }
-
-// class TimerService {
-//   Timer? _timer;
-//   int _elapsedTime = 0;
-//   final void Function(int) onTick;
-
-//   TimerService(this.onTick);
-
-//   // Start the timer
-//   void start() {
-//     _timer = Timer.periodic(Duration(seconds: 2), (timer) {
-//       _elapsedTime++;
-//       onTick(_elapsedTime);
-//       print('Elapsed time: $_elapsedTime seconds');
-//     });
-//   }
-
-//   // Stop the timer without resetting elapsed time
-//   void stop({bool resetTime = false}) {
-//     _timer?.cancel();
-//     print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
-//     if (resetTime) {
-//       _elapsedTime = 0;
-//     }
-//   }
-
-//   int getElapsedTime() => _elapsedTime;
-
-//   Future<void> _fetchDurationFromFirestore() async {
-//     try {
-//       final doc = await FirebaseFirestore.instance
-//           .collection('Duration')
-//           .doc('Duration')
-//           .get();
-
-//       if (doc.exists) {
-//         final data = doc.data();
-//         int firestoreDuration = data?['Duration'] ?? 0;
-//       } else {
-//         print('No duration data found.');
-//       }
-//     } catch (e) {
-//       print('Error fetching duration from Firestore: $e');
-//     }
-//   }
-// }
-
-// class TimerService {
-//   Timer? _timer;
-//   int _elapsedTime = 0;
-//   final void Function(int) onTick;
-
-//   TimerService(this.onTick);
-
-//   void start() {
-//     _timer = Timer.periodic(Duration(seconds: 2), (timer) {
-//       _elapsedTime++;
-//       onTick(_elapsedTime);
-//       print('Elapsed time: $_elapsedTime seconds'); // Print to console
-//     });
-//   }
-
-//   void stop() {
-//     _timer?.cancel();
-//   }
-// }

@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   static List<Widget> _pages = <Widget>[
-   // Trades(),
+  Trades(),
    Socket(),
     AllComplains(),
 

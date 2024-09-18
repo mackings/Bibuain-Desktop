@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class StatsContainer extends StatelessWidget {
+
   final IconData icon;
   final String staffId;
   final String speed;
@@ -52,48 +53,92 @@ class StatsContainer extends StatelessWidget {
               ),
             ],
           ),
-          Divider(thickness: 1.5, height: 20, color: Colors.black),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.speed_sharp),
-              SizedBox(width: 10),
-              Text(
-                "$speed",
-                style: GoogleFonts.montserrat(color: Colors.black),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Text(
-            "Paid Trades: $paidTrades",
-            style: GoogleFonts.montserrat(color: Colors.black),
-          ),
-          SizedBox(height: 4),
-          Text(
-            "Unpaid Trades: $unpaidTrades",
-            style: GoogleFonts.montserrat(color: Colors.black),
-          ),
-          SizedBox(height: 4),
-          Text(
-            "Total Assigned Trades: $totalAssignedTrades",
-            style: GoogleFonts.montserrat(color: Colors.black),
-          ),
+          Divider( color: Colors.grey),
           SizedBox(height: 8),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-                  Text(
+              Icon(Icons.speed_sharp),
+              SizedBox(width: 10),
+              Text(
+                speed == "null"? "0":speed,
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 4),
+
+          Row(
+             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+
+              Text(
+                "Paid Trades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+
+               Text(
+                "$paidTrades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+
+            ],
+          ),
+
+          SizedBox(height: 4),
+
+          Row(
+             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Unpaid Trades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+
+               Text(
+                "$unpaidTrades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+
+          Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Total Assigned Trades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+
+                            Text(
+                " $totalAssignedTrades",
+                style: GoogleFonts.montserrat(color: Colors.black),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 8),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+
+               Text(
                 "Mispaid:",
                 style: GoogleFonts.montserrat(color: Colors.black),
               ),
+
               SizedBox(width: 30,),
+
               Text(
                 "N$formattedMispaid",
                 style: GoogleFonts.montserrat(color: Colors.black,
                 fontWeight: FontWeight.w600),
               ),
+
             ],
           ),
         ],

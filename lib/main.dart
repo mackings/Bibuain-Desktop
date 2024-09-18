@@ -1,3 +1,4 @@
+import 'package:bdesktop/Manual/Msignin.dart';
 import 'package:bdesktop/firebase_options.dart';
 import 'package:bdesktop/home.dart';
 import 'package:bdesktop/login.dart';
@@ -24,7 +25,8 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: LoginPage());
+        home: LoginPage()
+        );
   }
 }
 
