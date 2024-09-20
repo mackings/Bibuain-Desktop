@@ -23,93 +23,114 @@ class _FundState extends State<Fund> {
   bool isLoading = false;
   bool showAccountName = false;
 
-Future<void> showBankSelectionSheet(BuildContext context) async {
-  final banks = await fetchBanks(); // Fetch banks data
+  Future<void> showBankSelectionSheet(BuildContext context) async {
+    final banks = await fetchBanks(); // Fetch banks data
 
-  // Define a list of popular bank names
-  final popularBankNames = [
-    'Kuda Bank',
-    'PayCom',
-    'Access Bank',
-    'Zenith Bank',
-    'First Bank of Nigeria',
-    'Guaranty Trust Bank',
-    'Wema Bank'
-  ];
+    // Define a list of popular bank names
+    final popularBankNames = [
+      'Kuda Bank',
+      'PayCom',
+      'Access Bank',
+      'Zenith Bank',
+      'First Bank of Nigeria',
+      'Guaranty Trust Bank',
+      'Wema Bank'
+    ];
 
-  // Filter the banks to show only the popular ones
-  final popularBanks = banks.where((bank) {
-    return popularBankNames.contains(bank['name']);
-  }).toList();
+    // Filter the banks to show only the popular ones
+    final popularBanks = banks.where((bank) {
+      return popularBankNames.contains(bank['name']);
+    }).toList();
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true, // This makes the bottom sheet expand more
-    builder: (context) {
-      return Container(
-        height: MediaQuery.of(context).size.height *
-            0.85, // Make it 85% of the screen height
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Select a Bank',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            Text('Popular Banks', style: TextStyle(fontSize: 16)),
+    // State variable to hold the search query
+    String searchQuery = '';
 
-            SizedBox(
-              height: 100,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: popularBanks.map((bank) {
-                  return GestureDetector(
-                    onTap: () {
-                      _selectBank(bank);
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      width: 100,
-                      margin: EdgeInsets.only(right: 8),
-                      child: Column(
-                        children: [
-                          Image.network(bank['logo'], height: 50),
-                          SizedBox(height: 5),
-                          Text(bank['name'], overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            
-            SizedBox(height: 10),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // This makes the bottom sheet expand more
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height *
+              0.85, // Make it 85% of the screen height
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Select a Bank',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SizedBox(height: 10),
 
-            Text('All Banks', style: TextStyle(fontSize: 16)),
-            Expanded(
-              child: ListView.builder(
-                itemCount: banks.length,
-                itemBuilder: (context, index) {
-                  final bank = banks[index];
-                  return ListTile(
-                    leading: Image.network(bank['logo'], height: 30),
-                    title: Text(bank['name']),
-                    onTap: () {
-                      _selectBank(bank);
-                      Navigator.pop(context);
-                    },
-                  );
+              // Search TextField
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search for a bank...',
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  searchQuery = value.toLowerCase();
+                  (context as Element).markNeedsBuild(); // Refresh the UI
                 },
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
 
+              SizedBox(height: 10),
+
+              Text('Popular Banks', style: TextStyle(fontSize: 16)),
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: popularBanks.map((bank) {
+                    return GestureDetector(
+                      onTap: () {
+                        _selectBank(bank);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: 100,
+                        margin: EdgeInsets.only(right: 8),
+                        child: Column(
+                          children: [
+                            Image.network(bank['logo'], height: 50),
+                            SizedBox(height: 5),
+                            Text(bank['name'], overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              Text('All Banks', style: TextStyle(fontSize: 16)),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: banks.length,
+                  itemBuilder: (context, index) {
+                    final bank = banks[index];
+                    // Filter banks based on search query
+                    if (!bank['name'].toLowerCase().contains(searchQuery)) {
+                      return SizedBox.shrink(); // Skip rendering this item
+                    }
+                    return ListTile(
+                      leading: Image.network(bank['logo'], height: 30),
+                      title: Text(bank['name']),
+                      onTap: () {
+                        _selectBank(bank);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<List<dynamic>> fetchBanks() async {
     final response = await http.get(Uri.parse('https://nigerianbanks.xyz/'));
@@ -120,29 +141,28 @@ Future<void> showBankSelectionSheet(BuildContext context) async {
     }
   }
 
-void _selectBank(Map<String, dynamic> bank) {
-  setState(() {
-    if (bank['name'].toLowerCase() == 'paycom') {
-      // Special case for Paycom
-      selectedBankName = 'Paycom';
-      selectedBankCode = '999992';
-      selectedBankLogo =
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSz4aBnqVSDoe1tUQiMe6iLYJm3BXIwoUxK8PySXToigEC8iy_WJODXwfdd9of_nCE6-MQ&usqp=CAU';
-    } else {
-      // Regular bank selection
-      selectedBankName = bank['name'];
-      selectedBankCode = bank['code'];
-      selectedBankLogo = bank['logo'];
-    }
-  });
-}
-
+  void _selectBank(Map<String, dynamic> bank) {
+    setState(() {
+      if (bank['name'].toLowerCase() == 'paycom') {
+        // Special case for Paycom
+        selectedBankName = 'Paycom';
+        selectedBankCode = '999992';
+        selectedBankLogo =
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSz4aBnqVSDoe1tUQiMe6iLYJm3BXIwoUxK8PySXToigEC8iy_WJODXwfdd9of_nCE6-MQ&usqp=CAU';
+      } else {
+        // Regular bank selection
+        selectedBankName = bank['name'];
+        selectedBankCode = bank['code'];
+        selectedBankLogo = bank['logo'];
+      }
+    });
+  }
 
   Future<void> verifyAccountDetails(
       String accountNumber, String bankCode) async {
     setState(() {
-      isLoading = true; 
-      showAccountName = false; 
+      isLoading = true;
+      showAccountName = false;
     });
 
     final response = await http.get(
@@ -171,7 +191,7 @@ void _selectBank(Map<String, dynamic> bank) {
       isLoading = false; // Hide progress indicator
     });
   }
- 
+
   @override
   void initState() {
     super.initState();
@@ -218,29 +238,60 @@ void _selectBank(Map<String, dynamic> bank) {
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                          color: myForm,
-                          borderRadius: BorderRadius.circular(7)),
+                        color: myForm,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
-                        child: TextFormField(
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            hintText: 'Select a bank',
-                            hintStyle: GoogleFonts.montserrat(),
-                            border: InputBorder.none,
-                            prefixIcon: selectedBankLogo != null
-                                ? Image.network(selectedBankLogo!, width: 20,height: 20,)
-                                : null,
-                            suffixIcon: IconButton(
-                              icon: Icon(Icons.arrow_drop_down),
-                              onPressed: () {
-                                showBankSelectionSheet(context);
-                              },
+                        child: GestureDetector(
+                          onTap: () {
+                            showBankSelectionSheet(context);
+                          },
+                          child: TextFormField(
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              hintText: 'Select a bank',
+                              hintStyle:
+                                  GoogleFonts.montserrat(color: Colors.black),
+                              border: InputBorder.none,
+                              prefixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (selectedBankLogo != null)
+                                    Image.network(
+                                      selectedBankLogo!,
+                                      width: 20,
+                                      height: 20,
+                                    ),
+                                  SizedBox(width: 8),
+                                  // Add space between the logo and text
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        print("Hii");
+                                        showBankSelectionSheet(context);
+                                      },
+                                      child: Text(
+                                        selectedBankName ?? 'Select Bank',
+                                        style: GoogleFonts.montserrat(),
+                                        overflow: TextOverflow
+                                            .ellipsis, // Prevent overflow
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(Icons.arrow_drop_down),
+                                onPressed: () {
+                                  showBankSelectionSheet(context);
+                                },
+                              ),
                             ),
+                            controller:
+                                TextEditingController(text: selectedBankName),
                           ),
-                          controller:
-                              TextEditingController(text: selectedBankName),
                         ),
                       ),
                     ),
@@ -267,6 +318,7 @@ void _selectBank(Map<String, dynamic> bank) {
                             hintText: 'Enter account number',
                             hintStyle: GoogleFonts.montserrat(),
                             border: InputBorder.none),
+                        style: GoogleFonts.montserrat(),
                       ),
                     ),
                   ),
@@ -287,7 +339,7 @@ void _selectBank(Map<String, dynamic> bank) {
                   ],
                 ),
               SizedBox(
-                height: 300,
+                height: 280,
               ),
               GestureDetector(
                 onTap: () {

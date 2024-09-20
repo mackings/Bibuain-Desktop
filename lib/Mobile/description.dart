@@ -52,6 +52,7 @@ class _DescriptionState extends State<Description> {
       };
 
       try {
+        print(payload);
         var response = await http.post(
           Uri.parse(url),
           headers: {"Content-Type": "application/json"},
@@ -97,7 +98,6 @@ class _DescriptionState extends State<Description> {
     });
   }
 
-
   void _formatAmount() {
     String currentText = _amountController.text.replaceAll(',', '');
     if (currentText.isNotEmpty) {
@@ -119,7 +119,7 @@ class _DescriptionState extends State<Description> {
           child: Text(
             value,
             style: GoogleFonts.montserrat(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -156,15 +156,13 @@ class _DescriptionState extends State<Description> {
           child: Column(
             children: [
               SizedBox(
-                height: 20,
+                height: 10,
               ),
 
               // Divider(),
-              SizedBox(
-                height: 10,
-              ),
+
               Container(
-                height: 45,
+                height: 35,
                 width: 220,
                 decoration: BoxDecoration(
                     color: myForm, borderRadius: BorderRadius.circular(5)),
@@ -182,7 +180,7 @@ class _DescriptionState extends State<Description> {
                 children: [
                   Expanded(
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 9),
+                      padding: EdgeInsets.symmetric(horizontal: 5),
                       decoration: BoxDecoration(
                         color: myForm,
                         borderRadius: BorderRadius.circular(8),
@@ -243,7 +241,7 @@ class _DescriptionState extends State<Description> {
                 ],
               ),
 
-              SizedBox(height: 35),
+              SizedBox(height: 15),
 
               Column(
                 children: [

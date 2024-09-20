@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:bdesktop/Admin/adminhome.dart';
 import 'package:bdesktop/Mobile/home.dart';
-import 'package:bdesktop/payers.dart';
+import 'package:bdesktop/Trainer/payers.dart';
 import 'package:bdesktop/widgets/bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -55,31 +55,32 @@ Future<void> _checkAndProceed(BuildContext context) async {
     if (staffDoc.exists) {
       await _saveUsernameToPrefs(username);  // Save username
 
+//Main
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => Payers(username: username),
+        //   ),
+        // );
 
+
+      // Navigate based on platform
+      
+      if (Platform.isWindows) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => Payers(username: username),
           ),
         );
-
-
-      // Navigate based on platform
-      // if (Platform.isWindows) {
-      //   Navigator.push(
-      //     context,
-      //     MaterialPageRoute(
-      //       builder: (context) => Payers(username: username),
-      //     ),
-      //   );
-      // } else if (Platform.isAndroid) {
-      //   Navigator.push(
-      //     context,
-      //     MaterialPageRoute(
-      //       builder: (context) => Apphome(username: username),
-      //     ),
-      //   );
-      // }
+      } else if (Platform.isAndroid) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Apphome(username: username),
+          ),
+        );
+      }
 
     } else {
       bool success = await _addStaff(username);
@@ -216,6 +217,7 @@ Future<void> _checkAndProceed(BuildContext context) async {
                       ),
                     ),
                     SizedBox(height: 20),
+
                     Container(
                       width: 60.w,
                       height: 4.h,
@@ -233,6 +235,7 @@ Future<void> _checkAndProceed(BuildContext context) async {
                         ),
                       ),
                     ),
+ 
                   ],
                 ),
               ),

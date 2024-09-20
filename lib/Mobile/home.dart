@@ -62,47 +62,48 @@ class _ApphomeState extends State<Apphome> {
     fetchTransactionHistory();
   }
 
- Future<void> fetchTransactionHistory() async {
-  final url = Uri.parse('https://tester-1wva.onrender.com/staff/${widget.username}/history');
-  try {
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      print(data);
+  Future<void> fetchTransactionHistory() async {
+    final url = Uri.parse(
+        'https://tester-1wva.onrender.com/staff/${widget.username}/history');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print(data);
+        setState(() {
+          transactionHistory =
+              data['data'].reversed.toList(); // Reverse the list here
+          isLoading = false;
+        });
+      } else {
+        // Handle error
+        setState(() {
+          isLoading = false;
+        });
+        print("Error: ${response.statusCode}");
+      }
+    } catch (e) {
       setState(() {
-        transactionHistory = data['data'].reversed.toList(); // Reverse the list here
         isLoading = false;
       });
-    } else {
-      // Handle error
-      setState(() {
-        isLoading = false;
-      });
-      print("Error: ${response.statusCode}");
+      print("Error: $e");
     }
-  } catch (e) {
-    setState(() {
-      isLoading = false;
-    });
-    print("Error: $e");
   }
-}
 
-String formatTimestamp(Map<String, dynamic> timestamp) {
-  final seconds = timestamp['_seconds'] as int;
-  final nanoseconds = timestamp['_nanoseconds'] as int;
+  String formatTimestamp(Map<String, dynamic> timestamp) {
+    final seconds = timestamp['_seconds'] as int;
+    final nanoseconds = timestamp['_nanoseconds'] as int;
 
-  // Create a DateTime object in UTC, then convert to local time
-  final date = DateTime.fromMillisecondsSinceEpoch(
-    seconds * 1000 + nanoseconds ~/ 1000000,
-    isUtc: true,
-  ).toLocal(); // Convert to local time
+    // Create a DateTime object in UTC, then convert to local time
+    final date = DateTime.fromMillisecondsSinceEpoch(
+      seconds * 1000 + nanoseconds ~/ 1000000,
+      isUtc: true,
+    ).toLocal(); // Convert to local time
 
-  // Format the DateTime object in the desired format
-  final formatter = DateFormat('MMMM d, h:mm a');
-  return formatter.format(date);
-}
-
+    // Format the DateTime object in the desired format
+    final formatter = DateFormat('MMMM d, h:mm a');
+    return formatter.format(date);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +118,7 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
               GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         actions: [
-          Icon(Icons.message_sharp, color: Colors.purple),
+          Icon(Icons.message_sharp, color: myColor),
           SizedBox(width: 30),
         ],
       ),
@@ -140,12 +141,12 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                         borderRadius: BorderRadius.circular(10)),
                     child: Padding(
                       padding: const EdgeInsets.only(
-                          left: 20, right: 20, top: 7, bottom: 7),
+                          left: 10, right: 10, top: 7, bottom: 7),
                       child: Text(
                         'Spend',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, 
-                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
                             color: Colors.black),
                       ),
                     )),
@@ -161,8 +162,8 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                         'Save',
                         style: GoogleFonts.montserrat(
                             fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                             color: Colors.black),
+                            fontSize: 9,
+                            color: Colors.black),
                       ),
                     )),
                 Container(
@@ -176,8 +177,9 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                       child: Text(
                         'Borrow',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, 
-                            fontSize: 10,color: Colors.black),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
+                            color: Colors.black),
                       ),
                     )),
                 Container(
@@ -191,8 +193,9 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                       child: Text(
                         'Invest',
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600,fontSize: 10,
-                             color: Colors.black),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
+                            color: Colors.black),
                       ),
                     )),
               ],
@@ -244,8 +247,8 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
               children: [
                 GestureDetector(
                   onTap: () {
-                                      Navigator.push(
-                      context, MaterialPageRoute(builder: (context) => Fund()));
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Fund()));
                   },
                   child: Container(
                     height: MediaQuery.of(context).size.height *
@@ -253,7 +256,7 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                     width: MediaQuery.of(context).size.width *
                         0.35, // Responsive width
                     decoration: BoxDecoration(
-                      border: Border.all(width: 1.5, color: Colors.grey),
+                      border: Border.all(width: 1.5, color: Colors.black),
                       borderRadius: BorderRadius.circular(6),
                       color: Colors.white,
                     ),
@@ -262,9 +265,7 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: myColor
-                          ),
+                              shape: BoxShape.circle, color: myColor),
                           child: Center(
                             child: Icon(
                               Icons.keyboard_arrow_up,
@@ -293,7 +294,7 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                   width: MediaQuery.of(context).size.width *
                       0.35, // Responsive width
                   decoration: BoxDecoration(
-                    border: Border.all(width: 1.5, color: Colors.grey),
+                    border: Border.all(width: 1.5, color: Colors.black),
                     borderRadius: BorderRadius.circular(6),
                     color: Colors.white,
                   ),
@@ -374,12 +375,15 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                 ),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=> Transactions()));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Transactions()));
                   },
                   child: Text(
                     "View all",
-                    style: GoogleFonts.montserrat(fontWeight: FontWeight.bold,
-                    color: myColor),
+                    style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold, color: myColor),
                   ),
                 ),
               ],
@@ -387,65 +391,75 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
             SizedBox(height: 15),
 
             // Transaction History
-isLoading
-          ? Center(child: CircularProgressIndicator())
-          : transactionHistory.isEmpty
-              ? Center(
-                  child: Text(
-                    "No transaction history available",
-                    style: GoogleFonts.montserrat(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                )
-              : Expanded(
-                child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ListView.builder(
-                      itemCount: transactionHistory.length,
-                      itemBuilder: (context, index) {
-                        final transaction = transactionHistory[index];
-                        return ListTile(
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                transaction['name'] ?? "Bibuain",
-                                style: GoogleFonts.montserrat(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "-N${transaction['amountPaid'] ?? 'Pending'}",
-                                style: GoogleFonts.montserrat(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+            isLoading
+                ? Center(child: CircularProgressIndicator())
+                : transactionHistory.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No transaction history available",
+                          style: GoogleFonts.montserrat(
+                            fontSize: 16,
+                            color: Colors.grey,
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (transaction['assignedAt'] != null)
-                                Text(
-                                  "${formatTimestamp(transaction['assignedAt'])}",
-                                  style: GoogleFonts.montserrat(color: Colors.grey),
-                                )
-                              else
-                                Text(
-                                  "Paid in ${transaction['markedAt']} Seconds",
-                                  style: GoogleFonts.montserrat(color: Colors.grey),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ),
+                        ),
+                      )
+                    : Expanded(
+  child: Padding(
+  padding: const EdgeInsets.all(8.0),
+  child: ListView.builder(
+    itemCount: transactionHistory.length,
+    itemBuilder: (context, index) {
+      final transaction = transactionHistory[index];
 
+      // Apply all filter conditions
+      if (transaction['name'] == 'No Name' ||
+          transaction['amountPaid'] == '0' || 
+          transaction['amountPaid'] == 'Pending' ||
+          (transaction['markedAt'] == 'Automatic' || 
+           transaction['markedAt'] == 'Pending' || 
+           transaction['markedAt'] == 'complain')) {
+        return SizedBox.shrink(); // Skips rendering this item
+      }
+
+      return ListTile(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              transaction['name'] ?? "Bibuain",
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "N${transaction['amountPaid'] != null ? NumberFormat('#,##0').format(double.tryParse(transaction['amountPaid'].toString()) ?? 0) : 'Pending'}",
+              style: GoogleFonts.montserrat(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (transaction['assignedAt'] != null)
+              Text(
+                "${formatTimestamp(transaction['assignedAt'])}",
+                style: GoogleFonts.montserrat(color: Colors.grey),
+              )
+            else
+              Text(
+                "Paid in ${transaction['markedAt']} Seconds",
+                style: GoogleFonts.montserrat(color: Colors.grey),
+              ),
+          ],
+        ),
+      );
+    },
+  ),
+),
+),
 
           ],
         ),
@@ -487,10 +501,7 @@ Widget buildContainer(IconData icon, String label, Color iconColor) {
           Text(
             label,
             style: GoogleFonts.montserrat(
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-              fontSize: 12
-            ),
+                fontWeight: FontWeight.w600, color: Colors.black, fontSize: 12),
           ),
         ],
       ),

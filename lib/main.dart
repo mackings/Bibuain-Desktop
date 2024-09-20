@@ -1,7 +1,7 @@
 import 'package:bdesktop/Manual/Msignin.dart';
 import 'package:bdesktop/firebase_options.dart';
 import 'package:bdesktop/home.dart';
-import 'package:bdesktop/login.dart';
+import 'package:bdesktop/Trainer/login.dart';
 import 'package:bdesktop/trades.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';

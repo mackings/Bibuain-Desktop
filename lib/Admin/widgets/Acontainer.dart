@@ -42,23 +42,24 @@ class AContainer extends StatelessWidget {
             children: [
         
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
         
                   CircleAvatar(child: Icon(icon, size: 28, color: Colors.black)),
                   SizedBox(width: 60),
                   Text(
                     " $staffId",
-                    style: GoogleFonts.montserrat(color: Colors.black, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
         
-              Divider(thickness: 1.5, height: 20, color: Colors.black),
+              Divider(thickness: 1.5, height: 20, color:Colors.grey,),
         
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.person_2),
+                  Icon(Icons.person_2,color: Colors.orange,),
                   SizedBox(width: 180,),
                   Text(
                     "$paidTrades",
@@ -74,7 +75,7 @@ class AContainer extends StatelessWidget {
                 children: [
                   Text(
                     "Unpaid Trades:",
-                    style: GoogleFonts.montserrat(color: Colors.black),
+                    style: GoogleFonts.montserrat(color: Colors.grey,),
                   ),
                   SizedBox(width: 85,),
                    Text(
@@ -92,7 +93,7 @@ class AContainer extends StatelessWidget {
                 children: [
                       Text(
                     "Mispaid:",
-                    style: GoogleFonts.montserrat(color: Colors.black),
+                    style: GoogleFonts.montserrat(color: Colors.grey,),
                   ),
                   SizedBox(width: 50,),
                   Text(

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:bdesktop/login.dart';
+import 'package:bdesktop/Trainer/login.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -304,6 +304,7 @@ class _PayersState extends State<Payers> {
         print(">>>>${verifiedAccounts}<<<<<<<");
 
         // Show SnackBar with the account name
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -314,11 +315,13 @@ class _PayersState extends State<Payers> {
           ),
         );
 
+
         setState(() {
           isVerified = true;
           verifiedAccounts
               .add(recentAccountNumber!); // Add account to verified set
         });
+      
       } else {
         setState(() {
           isVerified = false;
@@ -414,48 +417,6 @@ class _PayersState extends State<Payers> {
         print('Bank Code: >>>> $recentBankCode');
 
         _verifyAccount(context);
-      });
-    }
-  }
-
-  Future<void> _markAsComplaint() async {
-    if (selectedTradeHash == null) {
-      setState(() {
-        _responseMessage = 'No trade selected.';
-      });
-      return;
-    }
-
-    try {
-      final tradeDoc = await FirebaseFirestore.instance
-          .collection('trades')
-          .doc(selectedTradeHash)
-          .get();
-
-      if (tradeDoc.exists) {
-        final tradeData = tradeDoc.data() as Map<String, dynamic>;
-
-        await FirebaseFirestore.instance
-            .collection('complaints')
-            .doc(selectedTradeHash)
-            .set(tradeData);
-
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({'status': 'unresolved'});
-
-        setState(() {
-          _responseMessage = 'Trade marked as complaint successfully.';
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Trade not found.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _responseMessage = 'An error occurred: $e';
       });
     }
   }
@@ -639,59 +600,125 @@ class _PayersState extends State<Payers> {
     }
   }
 
-  Future<Map<String, dynamic>> getTradeStats() async {
-    int totalTrades = 0;
-    int tradesMarkedWithNumbers = 0;
-    int tradesMarkedAutomatic = 0;
-    double totalSpeed = 0;
-    int count = 0;
 
-    // Fetch staff document from Firestore
-    DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-        .collection('staff')
-        .doc(widget.username)
-        .get();
+//Complain
 
-    if (staffDoc.exists) {
-      // Extract assigned trades
-      List<dynamic> assignedTrades = staffDoc.get('assignedTrades');
+  Future<void> _markTradeAsCC(BuildContext context, String username) async {
+    try {
+     // int elapsedTime = _timerService!.getElapsedTime();
+    //  print("Marking at >>>>>>>>>>>>> $elapsedTime");
 
-      // Iterate through each trade
-      for (var trade in assignedTrades) {
-        totalTrades++; // Increment total trades counter
+      final response = await http.post(
+        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'trade_hash': selectedTradeHash,
+          'markedAt': 'complain', // Using the elapsed time
+          'amountPaid': fiatAmount,
+        }),
+      );
 
-        if (trade['isPaid'] == true) {
-          // If trade is paid, check for 'markedAt'
-          String? markedAt = trade['markedAt'];
+      if (response.statusCode == 200) {
+        print(">>>>> Marked ${response.body}");
 
-          // Check if marked automatically
-          if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
-            tradesMarkedAutomatic++; // Trade marked automatically
-          } else {
-            // Try parsing the markedAt string into a double
-            double? markedAtValue = double.tryParse(markedAt);
+        //1   _timerService!.stop(resetTime: true);
 
-            if (markedAtValue != null) {
-              tradesMarkedWithNumbers++; // Trade marked with a number
-              totalSpeed += markedAtValue; // Add speed to total
-              count++;
-            }
+        await FirebaseFirestore.instance
+            .collection('staff')
+            .doc(loggedInStaffID)
+            .update({
+          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+        });
+
+        await FirebaseFirestore.instance
+            .collection('trades')
+            .doc(selectedTradeHash)
+            .update({
+          'isPaid': true,
+        });
+
+        // Reset UI elements and start listening for new trades
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedTradeHash = null;
+            });
+          }
+        });
+
+        setState(() {
+          selectedTradeHash = null; // Reset selected trade
+        });
+      } else {
+        print('Failed to mark trade as paid: ${response.body}');
+      }
+    } catch (e) {
+      setState(() {
+        selectedTradeHash = null;
+      });
+      print('Error making API call: $e');
+    }
+  }
+
+
+
+Future<Map<String, dynamic>> getTradeStats() async {
+  int totalTrades = 0;
+  int tradesMarkedWithNumbers = 0;
+  int tradesMarkedAutomatic = 0;
+  int tradesMarkedInvalid = 0; // Counter for invalid trades
+  double totalSpeed = 0;
+  int count = 0;
+
+  // Fetch staff document from Firestore
+  DocumentSnapshot staffDoc = await FirebaseFirestore.instance
+      .collection('staff')
+      .doc(widget.username)
+      .get();
+
+  if (staffDoc.exists) {
+    // Extract assigned trades
+    List<dynamic> assignedTrades = staffDoc.get('assignedTrades');
+
+    // Iterate through each trade
+    for (var trade in assignedTrades) {
+      totalTrades++; // Increment total trades counter
+
+      if (trade['isPaid'] == true) {
+        // If trade is paid, check for 'markedAt'
+        String? markedAt = trade['markedAt'];
+
+        if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
+          tradesMarkedAutomatic++; // Trade marked automatically
+        } else if (markedAt.toLowerCase() == 'complain') {
+          tradesMarkedInvalid++; // Trade marked invalid
+        } else {
+          // Try parsing the markedAt string into a double
+          double? markedAtValue = double.tryParse(markedAt);
+
+          if (markedAtValue != null) {
+            tradesMarkedWithNumbers++; // Trade marked with a number
+            totalSpeed += markedAtValue; // Add speed to total
+            count++;
           }
         }
       }
     }
-
-    // Calculate the average speed
-    double averageSpeed = count > 0 ? totalSpeed / count : 0;
-
-    // Return the data as a map
-    return {
-      'totalTrades': totalTrades,
-      'tradesMarkedAutomatic': tradesMarkedAutomatic,
-      'tradesMarkedWithNumbers': tradesMarkedWithNumbers,
-      'averageSpeed': averageSpeed,
-    };
   }
+
+  // Calculate the average speed
+  double averageSpeed = count > 0 ? totalSpeed / count : 0;
+
+  // Return the data as a map
+  return {
+    'totalTrades': totalTrades,
+    'tradesMarkedAutomatic': tradesMarkedAutomatic,
+    'tradesMarkedWithNumbers': tradesMarkedWithNumbers,
+    'tradesMarkedInvalid': tradesMarkedInvalid, // Include invalid trades
+    'averageSpeed': averageSpeed,
+  };
+}
+
 
 // TRADE MONEY FUNCTIONS END
 
@@ -1085,58 +1112,62 @@ class _PayersState extends State<Payers> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
-            Expanded(
-              flex: 2,
-              child: FutureBuilder<Map<String, dynamic>>(
-                future: getTradeStats(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    final int totalTrades = snapshot.data!['totalTrades'];
-                    final int tradesMarkedAutomatic =
-                        snapshot.data!['tradesMarkedAutomatic'];
-                    final int tradesMarkedWithNumbers =
-                        snapshot.data!['tradesMarkedWithNumbers'];
-                    final double averageSpeed = snapshot.data!['averageSpeed'];
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              "Hello,",
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10.sp, fontWeight: FontWeight.w500),
-                            ),
-                            SizedBox(
-                              width: 1.w,
-                            ),
-                            Text(widget.username),
-                          ],
-                        ),
-                        SizedBox(
-                          height: 2.h,
-                        ),
-                        Container(
-                          child: _buildTradeStatsContainer(
-                              context,
-                              totalTrades,
-                              tradesMarkedAutomatic,
-                              tradesMarkedWithNumbers,
-                              averageSpeed),
-                        ),
-                      ],
-                    );
-                  } else {
-                    return Text('No data available');
-                  }
-                },
+Expanded(
+  flex: 2,
+  child: FutureBuilder<Map<String, dynamic>>(
+    future: getTradeStats(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      } else if (snapshot.hasError) {
+        return Text('Error: ${snapshot.error}');
+      } else if (snapshot.hasData) {
+        final int totalTrades = snapshot.data!['totalTrades'];
+        final int tradesMarkedAutomatic = snapshot.data!['tradesMarkedAutomatic'];
+        final int tradesMarkedWithNumbers = snapshot.data!['tradesMarkedWithNumbers'];
+        final int tradesMarkedInvalid = snapshot.data!['tradesMarkedInvalid']; // Retrieve invalid trades
+        final double averageSpeed = snapshot.data!['averageSpeed'];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  "Hello,",
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp, fontWeight: FontWeight.w500),
+                ),
+                SizedBox(width: 1.w),
+                Text(widget.username),
+              ],
+            ),
+            SizedBox(height: 2.h),
+            Container(
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: _buildTradeStatsContainer(
+                  context,
+                  totalTrades,
+                  tradesMarkedAutomatic,
+                  tradesMarkedWithNumbers,
+                  tradesMarkedInvalid, // Pass invalid trades to the container
+                  averageSpeed,
+                ),
               ),
             ),
+          ],
+        );
+      } else {
+        return Text('No data available');
+      }
+    },
+  ),
+),
+
+           
+           
             SizedBox(
               width: 4.w,
             ),
@@ -1167,7 +1198,14 @@ class _PayersState extends State<Payers> {
                   if (assignedTrades.isEmpty) {
                     // Stop the timer when no trades are assigned
                     _timerService?.stop();
-                    return Center(child: Text('No Trades assigned.'));
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 70),
+                        child: Text('Welcome ${widget.username}',style: GoogleFonts.montserrat(
+                          fontSize: 26
+                        ),),
+                      ));
                   }
 
                   // Filter out paid trades
@@ -1334,8 +1372,19 @@ class _PayersState extends State<Payers> {
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  _removeTradeByHash();
-                                  // _removeCurrentTrade();
+
+                                 showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return ConfirmCCDialog(onConfirm: () {
+                                          _markTradeAsCC(
+                                              context, widget.username);
+                                          Navigator.pop(context);
+                                        }, onCancel: () {
+                                          Navigator.pop(context);
+                                        });
+                                      });
+
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -1400,6 +1449,7 @@ class _PayersState extends State<Payers> {
 
 
             SizedBox(width: 20),
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -1763,11 +1813,14 @@ class HeaderContainer extends StatelessWidget {
   }
 }
 
+
+
 Widget _buildTradeStatsContainer(
     BuildContext context,
     int totalTrades,
     int tradesMarkedAutomatic,
     int tradesMarkedWithNumbers,
+    int tradesMarkedInvalid, // Add invalid trades
     double averageSpeed) {
   return Column(
     children: [
@@ -1776,7 +1829,7 @@ Widget _buildTradeStatsContainer(
           border: Border.all(width: 0.5),
           borderRadius: BorderRadius.circular(10),
         ),
-        width: 50.w,
+        width: MediaQuery.of(context).size.width * 0.5, // Responsive width
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
@@ -1784,25 +1837,24 @@ Widget _buildTradeStatsContainer(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                "Trade Stats",
-                style: GoogleFonts.poppins(
+                "Activity Stats",
+                style: GoogleFonts.montserrat(
                   textStyle: TextStyle(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 17, // Adjust font size as needed
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              SizedBox(height: 2.h),
-              _buildStatRow('Total Trades: ', totalTrades.toString(), 5.sp),
+              SizedBox(height: 8),
+              _buildStatRow('Total Trades: ', totalTrades.toString(), 12),
               Divider(),
-              _buildStatRow(
-                  'Trades Unmarked: ', tradesMarkedAutomatic.toString(), 5.sp),
+              _buildStatRow('Trades Unmarked: ', tradesMarkedAutomatic.toString(), 12),
               Divider(),
-              _buildStatRow(
-                  'Trades Marked: ', tradesMarkedWithNumbers.toString(), 5.sp),
+              _buildStatRow('Trades Marked: ', tradesMarkedWithNumbers.toString(), 12),
               Divider(),
-              _buildStatRow('Total Speed: ',
-                  '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
+              _buildStatRow('Invalid Trades: ', tradesMarkedInvalid.toString(), 12), // Display invalid trades
+              Divider(),
+              _buildStatRow('Total Speed: ', '${averageSpeed.toStringAsFixed(2)} sec', 14),
             ],
           ),
         ),
@@ -1811,8 +1863,10 @@ Widget _buildTradeStatsContainer(
   );
 }
 
+
 Widget _buildStatRow(String title, String value, double fontSize) {
   return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
         title,

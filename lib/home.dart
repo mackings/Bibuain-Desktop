@@ -1,14 +1,9 @@
-import 'dart:convert';
-import 'package:bdesktop/alltrades.dart';
+
 import 'package:bdesktop/complains.dart';
-import 'package:bdesktop/payers.dart';
-import 'package:bdesktop/socket.dart';
+import 'package:bdesktop/Trainer/payers.dart';
 import 'package:bdesktop/trades.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 import 'package:sizer/sizer.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,11 +16,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static List<Widget> _pages = <Widget>[
   Trades(),
-   Socket(),
     AllComplains(),
 
     //AllTrades(),
-    Socket(),
     Payers(username: '',)
   ];
 

@@ -37,6 +37,8 @@ class _AdminHomeState extends State<AdminHome> {
     _loadStaffDataFromPrefs();
   }
 
+
+
   Future<void> _loadStaffDataFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final staffDataString = prefs.getString('staffData');
@@ -52,7 +54,6 @@ class _AdminHomeState extends State<AdminHome> {
   }
 
   void _calculateTotals() {
-
     double totalMispayment = 0;
     double totalFiatRequested = 0;
     double totalAmountPaid = 0;
@@ -86,11 +87,13 @@ class _AdminHomeState extends State<AdminHome> {
         _totalUnpaidTrades = totalUnpaidTrades;
         _totalAssignedTrades = totalAssignedTrades;
         _totalStaffCount = totalStaffCount;
+
+        print('Calculated Total Mispayment: $totalMispayment');
+        print(
+            'Expected Total Mispayment: ${_staffDataFetched['mispayment']['expectedTotal']}');
       });
     }
   }
-
-
 
   Future<void> _updateSecondsInFirestore(int seconds) async {
     try {
@@ -99,12 +102,19 @@ class _AdminHomeState extends State<AdminHome> {
           .doc('Duration')
           .update({'Duration': seconds});
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+          'Seconds Updated Successfully',
+          style: GoogleFonts.montserrat(),
+        )),
+      );
+
       print('Seconds updated successfully.');
     } catch (e) {
       print('Error updating seconds in Firestore: $e');
     }
   }
-  
 
   Future<void> _fetchData() async {
     setState(() {
@@ -169,85 +179,84 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
 
+
+
   String _selectedStaffId = '';
   final TextEditingController _numberOfTradesController =
       TextEditingController();
+  Future<void> _showAssignDialog() async {
+    final staffIds = await _fetchStaffIds();
 
-
-
-Future<void> _showAssignDialog() async {
-  final staffIds = await _fetchStaffIds();
-
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (BuildContext context, StateSetter setState) {
-          return AlertDialog(
-            title: Text('Assign Trade'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButton<String>(
-                  value: _selectedStaffId.isEmpty ? null : _selectedStaffId,
-                  hint: Text('Select Staff'),
-                  items: staffIds.map((staffId) {
-                    return DropdownMenuItem<String>(
-                      value: staffId,
-                      child: Text(staffId),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedStaffId = value ?? '';
-                      print(_selectedStaffId);
-                    });
-                  },
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(7),
-                      border: Border.all(width: 0.5)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: TextField(
-                        controller: _numberOfTradesController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Enter Number of Trades",
-                            helperStyle: GoogleFonts.montserrat())),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Assign Trade'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<String>(
+                    value: _selectedStaffId.isEmpty ? null : _selectedStaffId,
+                    hint: Text('Select Staff'),
+                    items: staffIds.map((staffId) {
+                      return DropdownMenuItem<String>(
+                        value: staffId,
+                        child: Text(staffId),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedStaffId = value ?? '';
+                        print(_selectedStaffId);
+                      });
+                    },
                   ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(width: 0.5)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: TextField(
+                          controller: _numberOfTradesController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                              border: InputBorder.none,
+                              hintText: "Enter Number of Trades",
+                              helperStyle: GoogleFonts.montserrat())),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_selectedStaffId.isNotEmpty &&
+                        _numberOfTradesController.text.isNotEmpty) {
+                      _assignTrades();
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Text('Assign'),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_selectedStaffId.isNotEmpty &&
-                      _numberOfTradesController.text.isNotEmpty) {
-                    _assignTrades();
-                    Navigator.of(context).pop();
-                  }
-                },
-                child: Text('Assign'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-
-
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<List<String>> _fetchStaffIds() async {
     final firestore = FirebaseFirestore.instance;
@@ -276,6 +285,9 @@ Future<void> _showAssignDialog() async {
       if (response.statusCode == 200) {
         // Handle successful response
         print('Trade assigned successfully');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Trade Assigned Successfully')),
+        );
       } else {
         // Handle error response
         print('Failed to assign trade');
@@ -294,268 +306,240 @@ Future<void> _showAssignDialog() async {
     String formattedTotalAmountPaid =
         NumberFormat('#,##0.00').format(_totalAmountPaid);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Admin Overview',
-            style: GoogleFonts.montserrat(
-                color: Colors.black, fontWeight: FontWeight.w600)),
-        automaticallyImplyLeading: false,
-        actions: [
-          ElevatedButton(
-            onPressed: _showAssignDialog,
-            child: Text(
-              'Assign Trade',
-              style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w400,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 30,
-          ),
-          ElevatedButton(
-            onPressed: _showSetSecondsDialog,
-            child: Text(
-              'Set Speed',
-              style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w400,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          SizedBox(width: 20),
-          ElevatedButton(
-            onPressed: _fetchData,
-            child: Text(
-              'Refresh',
-              style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w400,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          SizedBox(width: 20),
-          _loading
-              ? Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: CircularProgressIndicator(),
-                )
-              : SizedBox.shrink(),
-        ],
+  appBar: AppBar(
+    title: Text(
+      'Admin Overview',
+      style: GoogleFonts.montserrat(
+        color: Colors.black, 
+        fontWeight: FontWeight.w600,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 60, right: 60, top: 10),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AContainer(
-                    mispaid: "${_totalMispayment}",
-                    icon: Icons.attach_money,
-                    staffId: "N ${formattedTotalAmountPaid}",
-                    // speed: totalUnassignedTrades,
-                    paidTrades: "${_totalStaffCount}",
-                    unpaidTrades: "${_totalUnpaidTrades}",
-                    totalAssignedTrades: "",
-                    backgroundColor: Colors.blue,
-                  ),
-                  SizedBox(width: 60),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Row(
-                        //   children: [
-                        //     Text("Points at a",style: GoogleFonts.montserrat(),),
-                        //     SizedBox(width: 10,),
-                        //     Text("Glance",style: GoogleFonts.montserrat(
-                        //       color: Colors.blue,
-                        //       fontWeight: FontWeight.w600
-                        //     ),),
-                        //   ],
-                        // ),
-
-                        SizedBox(
-                          height: 10,
-                        ),
-
-                        Container(
-                          height: 220,
-                          decoration: BoxDecoration(
-                            // border: Border.all(width: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Builder(
-                            builder: (context) {
-                              // Calculate the maximum performance score from the staffStatistics data
-                              double maxPerformanceScore = staffStatistics
-                                  .map((staff) =>
-                                      double.tryParse(staff['performanceScore']
-                                              ?.toString() ??
-                                          '0.0') ??
-                                      0.0)
-                                  .reduce((a, b) => a > b ? a : b);
-
-                              // Ensure maxY is at least greater than the maximum performance score
-                              double maxY = maxPerformanceScore > 0
-                                  ? maxPerformanceScore * 1.2
-                                  : 150;
-
-                              return BarChart(
-                                BarChartData(
-                                  alignment: BarChartAlignment.spaceAround,
-                                  maxY: maxY, // Dynamically adjust maxY
-                                  barTouchData: BarTouchData(enabled: false),
-                                  gridData: FlGridData(show: false),
-                                  titlesData: FlTitlesData(
-                                    show: true,
-                                    topTitles: AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 40,
-                                        getTitlesWidget: (value, meta) {
-                                          final int index = value.toInt();
-                                          if (index >= 0 &&
-                                              index < staffStatistics.length) {
-                                            return Text(
-                                              staffStatistics[index]
-                                                      ['staffId'] ??
-                                                  'N/A',
-                                              style: GoogleFonts.montserrat(
-                                                fontWeight: FontWeight.w400,
-                                                color: Colors.black,
-                                              ),
-                                            );
-                                          }
-                                          return Container();
-                                        },
-                                      ),
-                                    ),
-                                    leftTitles: AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                    rightTitles: AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                  ),
-                                  borderData: FlBorderData(show: false),
-                                  barGroups: List.generate(
-                                      staffStatistics.length, (index) {
-                                    final staff = staffStatistics[index];
-                                    final performanceScore = (double.tryParse(
-                                                staff['performanceScore']
-                                                        ?.toString() ??
-                                                    '0.0') ??
-                                            0.0)
-                                        .toDouble();
-
-                                    // Normalize the performance score relative to maxPerformanceScore
-                                    final normalizedScore = (performanceScore /
-                                            (maxPerformanceScore > 0
-                                                ? maxPerformanceScore
-                                                : 1)) *
-                                        maxY;
-
-                                    return BarChartGroupData(
-                                      x: index,
-                                      barRods: [
-                                        BarChartRodData(
-                                          toY: 100, // Example static bar
-                                          color: Colors.black,
-                                          width: 15,
-                                        ),
-                                        BarChartRodData(
-                                          toY: normalizedScore.clamp(1.0,
-                                              maxY), // Scale the performance score
-                                          color: Colors.orange,
-                                          width: 15,
-                                        ),
-                                      ],
-                                    );
-                                  }),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-              Wrap(
-                spacing: 16.0, // Space between items horizontally
-                runSpacing: 16.0, // Space between rows
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 20),
-
-                      Text(
-                        'Staff Statistics',
-                        style: GoogleFonts.montserrat(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Use the Wrap widget here for the staff statistics
-                      Padding(
-                        padding: const EdgeInsets.only(left: 250),
-                        child: Wrap(
-                          spacing: 16.0, // Space between items horizontally
-                          runSpacing: 16.0, // Space between rows
-                          children: staffStatistics.map<Widget>((staff) {
-                            return Container(
-                              width: MediaQuery.of(context).size.width / 4 -
-                                  24, // 4 items per row with some padding
-                              child: StatsContainer(
-                                icon: Icons.person_3_outlined,
-                                staffId: staff['staffId'] ?? 'N/A',
-                                speed: staff['averageSpeed'].toString(),
-                                paidTrades:
-                                    staff['paidTrades']?.toString() ?? '0',
-                                unpaidTrades:
-                                    staff['unpaidTrades']?.toString() ?? '0',
-                                totalAssignedTrades:
-                                    staff['totalAssignedTrades']?.toString() ??
-                                        '0',
-                                mispaid: ((double.tryParse(
-                                                staff['totalFiatRequested']
-                                                        ?.toString() ??
-                                                    '0') ??
-                                            0) -
-                                        (double.tryParse(
-                                                staff['totalAmountPaid']
-                                                        ?.toString() ??
-                                                    '0') ??
-                                            0))
-                                    .toStringAsFixed(2),
-                                backgroundColor: Colors.white,
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-
-                      SizedBox(height: 20),
-                    ],
-                  ),
-                ],
-              )
-            ],
+    ),
+    automaticallyImplyLeading: false,
+    actions: [
+      ElevatedButton(
+        onPressed: _showAssignDialog,
+        child: Text(
+          'Assign Trade',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w400,
+            color: Colors.black,
           ),
         ),
       ),
-    );
+      SizedBox(width: 30),
+      ElevatedButton(
+        onPressed: _showSetSecondsDialog,
+        child: Text(
+          'Set Speed',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w400,
+            color: Colors.black,
+          ),
+        ),
+      ),
+      SizedBox(width: 20),
+      ElevatedButton(
+        onPressed: _fetchData,
+        child: Text(
+          'Refresh',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w400,
+            color: Colors.black,
+          ),
+        ),
+      ),
+      SizedBox(width: 20),
+      _loading
+          ? Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            )
+          : SizedBox.shrink(),
+    ],
+  ),
+  body: SingleChildScrollView(
+    child: Padding(
+      padding: const EdgeInsets.only(left: 20,right: 20), // Adjusted padding for responsiveness
+      child: Column(
+        children: [
+
+          SizedBox(height: 60),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // AContainer wrapped in Flexible for responsiveness
+              Flexible(
+                flex: 1,
+                child: AContainer(
+                  mispaid: _staffDataFetched != null &&
+                          _staffDataFetched['mispayment'] != null
+                      ? "${_staffDataFetched['mispayment']['expectedTotal']}"
+                      : "N/A",
+                  icon: Icons.attach_money,
+                  staffId: "N ${formattedTotalAmountPaid}",
+                  paidTrades: "${_totalStaffCount}",
+                  unpaidTrades: "${_totalUnpaidTrades}",
+                  totalAssignedTrades: "",
+                  backgroundColor: Colors.black,
+                ),
+              ),
+              
+              SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Space between AContainer and BarChart
+
+              // Expanded BarChart widget for dynamic resizing
+              Expanded(
+                flex: 2, // BarChart takes more space
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 100),
+                  child: Container(
+                    height: 220, // Fixed height for the bar chart container
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        double maxPerformanceScore = staffStatistics.isNotEmpty
+                            ? staffStatistics
+                                .map((staff) => double.tryParse(staff['performanceScore']?.toString() ?? '0.0') ?? 0.0)
+                                .reduce((a, b) => a > b ? a : b)
+                            : 0.0; // Fallback value if the list is empty
+                  
+                        double maxY = maxPerformanceScore > 0 ? maxPerformanceScore * 1.2 : 150;
+                  
+                        if (staffStatistics.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No data available',
+                              style: TextStyle(fontSize: 16, color: Colors.black),
+                            ),
+                          );
+                        }
+                  
+                        return BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            maxY: maxY,
+                            barTouchData: BarTouchData(
+                              enabled: true,
+                              touchTooltipData: BarTouchTooltipData(
+                                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                  final staff = staffStatistics[groupIndex];
+                                  final performanceScore = double.tryParse(
+                                          staff['performanceScore']?.toString() ?? '0.0') ??
+                                      0.0;
+                  
+                                  return BarTooltipItem(
+                                    'Performance: ${performanceScore.toStringAsFixed(2)}',
+                                    TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            gridData: FlGridData(show: true),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 30,
+                                  getTitlesWidget: (value, meta) {
+                                    final int index = value.toInt();
+                                    if (index >= 0 && index < staffStatistics.length) {
+                                      return Text(
+                                        staffStatistics[index]['staffId'] ?? 'N/A',
+                                        style: GoogleFonts.montserrat(
+                                          fontWeight: FontWeight.w400,
+                                          color: Colors.black,
+                                        ),
+                                      );
+                                    }
+                                    return Container();
+                                  },
+                                ),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            barGroups: List.generate(staffStatistics.length, (index) {
+                              final staff = staffStatistics[index];
+                              final performanceScore = (double.tryParse(
+                                          staff['performanceScore']?.toString() ?? '0.0') ??
+                                      0.0)
+                                  .toDouble();
+                              final normalizedScore = (performanceScore / (maxPerformanceScore > 0 ? maxPerformanceScore : 1)) * maxY;
+                  
+                              return BarChartGroupData(
+                                x: index,
+                                barRods: [
+                                  BarChartRodData(
+                                    toY: 10, // Example static bar
+                                    color: Colors.black,
+                                    width: 15,
+                                  ),
+                                  BarChartRodData(
+                                    toY: normalizedScore.clamp(1.0, maxY),
+                                    color: Colors.orange,
+                                    width: 15,
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+SizedBox(height: 30),
+          // Wrap for staff statistics
+          Wrap(
+            spacing: 16.0, // Horizontal space between items
+            runSpacing: 16.0, // Vertical space between rows
+            children: staffStatistics.map<Widget>((staff) {
+              return Container(
+                width: MediaQuery.of(context).size.width / 4 - 24, // 4 items per row
+                child: StatsContainer(
+                  icon: Icons.person_3_outlined,
+                  staffId: staff['staffId'] ?? 'N/A',
+                  speed: staff['averageSpeed']?.toString() ?? '0',
+                  paidTrades: staff['paidTrades']?.toString() ?? '0',
+                  unpaidTrades: staff['unpaidTrades']?.toString() ?? '0',
+                  totalAssignedTrades: staff['totalAssignedTrades']?.toString() ?? '0',
+                  mispaid: ((double.tryParse(staff['totalFiatRequested']?.toString() ?? '0') ?? 0) -
+                          (double.tryParse(staff['totalAmountPaid']?.toString() ?? '0') ?? 0))
+                      .toStringAsFixed(2),
+                  backgroundColor: Colors.white,
+                ),
+              );
+            }).toList(),
+          ),
+
+          SizedBox(height: 20),
+        ],
+      ),
+    ),
+  ),
+);
+
+
   }
 }
 

@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:bdesktop/Admin/adminhome.dart';
 import 'package:bdesktop/Manual/Trade%20Pool/Payment.dart';
 import 'package:bdesktop/Mobile/home.dart';
-import 'package:bdesktop/payers.dart';
+import 'package:bdesktop/Trainer/payers.dart';
 import 'package:bdesktop/widgets/bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';

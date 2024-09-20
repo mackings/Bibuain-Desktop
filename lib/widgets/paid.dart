@@ -30,3 +30,37 @@ class ConfirmPayDialog extends StatelessWidget {
     );
   }
 }
+
+
+
+
+class ConfirmCCDialog extends StatelessWidget {
+  final VoidCallback onConfirm;
+  final VoidCallback onCancel;
+
+  ConfirmCCDialog({required this.onConfirm, required this.onCancel});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+
+      title: Text('Confirm Complaint',style: GoogleFonts.poppins(
+        fontWeight: FontWeight.w600
+      ),),
+      content: Text('Are you sure Trade is Invalid?'),
+      actions: <Widget>[
+        TextButton(
+          onPressed: onCancel,
+          child: Text('No'),
+        ),
+        ElevatedButton(
+          onPressed: onConfirm,
+          child: Text('Yes'),
+        ),
+      ],
+    );
+  }
+}

@@ -105,55 +105,73 @@ String formatTimestamp(Map<String, dynamic> timestamp) {
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: ListView.builder(
-                    itemCount: transactionHistory.length,
-                    itemBuilder: (context, index) {
-                      final transaction = transactionHistory[index];
-                      return ListTile(
-                        title: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              transaction['name'] ?? "Bibuain",
-                              style: GoogleFonts.montserrat(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "-N${transaction['amountPaid'] ?? 'Pending'}",
-                              style: GoogleFonts.montserrat(
-                                color: myColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (transaction['assignedAt'] != null)
-                                  Text(
-                                    "${formatTimestamp(transaction['assignedAt'])}",
-                                    style: GoogleFonts.montserrat(color: Colors.grey),
-                                  )
-                                else
-                                  Text(
-                                    "Paid in ${transaction['markedAt']} Seconds",
-                                    style: GoogleFonts.montserrat(color: Colors.grey),
-                                  ),
-                              ],
-                            ),
-                            transaction['isPaid'] == false?Text('Not Marked',style: GoogleFonts.montserrat(color: Colors.red),):Text("Marked")
-                          ],
-                        ),
-                      );
-                    },
+  padding: const EdgeInsets.all(8.0),
+  child: ListView.builder(
+    itemCount: transactionHistory.length,
+    itemBuilder: (context, index) {
+      final transaction = transactionHistory[index];
+
+      // Apply all filter conditions
+      if (transaction['name'] == 'No Name' ||
+          transaction['amountPaid'] == '0' || transaction['amountPaid'] == 'Pending' ||
+          transaction['markedAt'] == 'Automatic' || transaction['markedAt'] == 'Pending' || transaction['markedAt'] == 'complain') {
+        return SizedBox.shrink(); // Skips rendering this item
+      }
+
+      return ListTile(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              transaction['name'] ?? "Bibuain",
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "N${transaction['amountPaid'] != null ? NumberFormat('#,##0').format(double.tryParse(transaction['amountPaid'].toString()) ?? 0) : 'Pending'}",
+              style: GoogleFonts.montserrat(
+                color: myColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (transaction['assignedAt'] != null)
+                  Text(
+                    "${formatTimestamp(transaction['assignedAt'])}",
+                    style: GoogleFonts.montserrat(color: Colors.grey),
+                  )
+                else
+                  Text(
+                    "Paid in ${transaction['markedAt']} Seconds",
+                    style: GoogleFonts.montserrat(color: Colors.grey),
                   ),
-                ),
+              ],
+            ),
+            transaction['isPaid'] == false
+                ? Text(
+                    'Not Marked',
+                    style: GoogleFonts.montserrat(color: Colors.red),
+                  )
+                : Text(
+                    "Marked",
+                    style: GoogleFonts.montserrat(color: Colors.black),
+                  ),
+          ],
+        ),
+      );
+    },
+  ),
+),
+
+
     );
   }
 }
