@@ -133,11 +133,17 @@ class StatsContainer extends StatelessWidget {
 
               SizedBox(width: 30,),
 
-              Text(
-                "N$formattedMispaid",
+               Text(
+                "$mispaid",
                 style: GoogleFonts.montserrat(color: Colors.black,
                 fontWeight: FontWeight.w600),
               ),
+
+              // Text(
+              //   "N$formattedMispaid",
+              //   style: GoogleFonts.montserrat(color: Colors.black,
+              //   fontWeight: FontWeight.w600),
+              // ),
 
             ],
           ),

@@ -296,6 +296,8 @@ class _PayersState extends State<Payers> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         //2   _timerService!.start();
+
+       // Timer()
         _initializeTimer();
 
         final data = json.decode(response.body);
@@ -305,15 +307,15 @@ class _PayersState extends State<Payers> {
 
         // Show SnackBar with the account name
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$accountName',
-              style: GoogleFonts.poppins(),
-            ),
-            duration: Duration(seconds: 5),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text(
+        //       '$accountName',
+        //       style: GoogleFonts.poppins(),
+        //     ),
+        //     duration: Duration(seconds: 5),
+        //   ),
+        // );
 
 
         setState(() {
@@ -688,7 +690,7 @@ Future<Map<String, dynamic>> getTradeStats() async {
         // If trade is paid, check for 'markedAt'
         String? markedAt = trade['markedAt'];
 
-        if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
+        if (markedAt == null || markedAt.toLowerCase() == 'automatic' || markedAt.toLowerCase() == 'expired') {
           tradesMarkedAutomatic++; // Trade marked automatically
         } else if (markedAt.toLowerCase() == 'complain') {
           tradesMarkedInvalid++; // Trade marked invalid
@@ -783,61 +785,61 @@ Future<Map<String, dynamic>> getTradeStats() async {
     }
   }
 
-  void calculatePrices() async {
-    int paxfulRate = await fetchPaxfulrates();
-    int binanceRate = await fetchBinanceRates();
-    int systemOverride = 1587;
-    int markup = 250000;
+  // void calculatePrices() async {
+  //   int paxfulRate = await fetchPaxfulrates();
+  //   int binanceRate = await fetchBinanceRates();
+  //   int systemOverride = 1587;
+  //   int markup = 250000;
 
-    if (paxfulRate != null && binanceRate != null) {
-      final formatter = NumberFormat("#,##0");
+  //   if (paxfulRate != null && binanceRate != null) {
+  //     final formatter = NumberFormat("#,##0");
 
-      String formattedPaxfulRate = formatter.format(paxfulRate);
-      String formattedBinanceRate = formatter.format(binanceRate);
-      String formattedSystemOverride = formatter.format(systemOverride);
-      String formattedMarkup = formatter.format(markup);
+  //     String formattedPaxfulRate = formatter.format(paxfulRate);
+  //     String formattedBinanceRate = formatter.format(binanceRate);
+  //     String formattedSystemOverride = formatter.format(systemOverride);
+  //     String formattedMarkup = formatter.format(markup);
 
-      // Print the formatted rates before any calculation
+  //     // Print the formatted rates before any calculation
 
-      print("Paxful Rate: $formattedPaxfulRate");
-      print("Binance Rate: $formattedBinanceRate");
-      print("System Override: $formattedSystemOverride");
-      print("Markup: $formattedMarkup");
+  //     print("Paxful Rate: $formattedPaxfulRate");
+  //     print("Binance Rate: $formattedBinanceRate");
+  //     print("System Override: $formattedSystemOverride");
+  //     print("Markup: $formattedMarkup");
 
-      // Continue with calculations using the original int values
-      int sellingPrice = paxfulRate * systemOverride;
+  //     // Continue with calculations using the original int values
+  //     int sellingPrice = paxfulRate * systemOverride;
 
-      print("Selling Price: $sellingPrice");
+  //     print("Selling Price: $sellingPrice");
 
-      if (paxfulRate > binanceRate) {
-        // Calculate the difference between the rates
-        int rateDifference = paxfulRate - binanceRate;
-        print("Rate Diff Pax/Bin: $rateDifference");
+  //     if (paxfulRate > binanceRate) {
+  //       // Calculate the difference between the rates
+  //       int rateDifference = paxfulRate - binanceRate;
+  //       print("Rate Diff Pax/Bin: $rateDifference");
 
-        // Calculate the cost price using the given logic
-        int costPrice = (rateDifference + 00) + sellingPrice;
+  //       // Calculate the cost price using the given logic
+  //       int costPrice = (rateDifference + 00) + sellingPrice;
 
-        print("Cost Price when Paxful is higher: $costPrice");
+  //       print("Cost Price when Paxful is higher: $costPrice");
 
-        setState(() {
-          this.sellingPrice = sellingPrice;
-          this.costPrice = costPrice;
-        });
-      } else {
-        // Calculate the cost price when Binance rate is higher
-        int rateDifference = paxfulRate - binanceRate;
-        int costPrice = systemOverride - sellingPrice;
+  //       setState(() {
+  //         this.sellingPrice = sellingPrice;
+  //         this.costPrice = costPrice;
+  //       });
+  //     } else {
+  //       // Calculate the cost price when Binance rate is higher
+  //       int rateDifference = paxfulRate - binanceRate;
+  //       int costPrice = systemOverride - sellingPrice;
 
-        print("Cost Price when Binance is higher: $costPrice");
-        print("Rate Diff Pax/Bin: $rateDifference");
+  //       print("Cost Price when Binance is higher: $costPrice");
+  //       print("Rate Diff Pax/Bin: $rateDifference");
 
-        setState(() {
-          this.sellingPrice = sellingPrice;
-          this.costPrice = costPrice;
-        });
-      }
-    }
-  }
+  //       setState(() {
+  //         this.sellingPrice = sellingPrice;
+  //         this.costPrice = costPrice;
+  //       });
+  //     }
+  //   }
+  // }
 
 
 //NOTIFIERS
@@ -1024,7 +1026,7 @@ Future<Map<String, dynamic>> getTradeStats() async {
     setState(() {
       selectedTradeHash = null;
     });
-    calculatePrices();
+   // calculatePrices();
     // _timerService = TimerService((elapsedTime) {});
   }
 
@@ -1401,20 +1403,23 @@ Expanded(
                                       border: Border.all(color: Colors.white)),
                                 ),
                               ),
+
+
                               GestureDetector(
                                 onTap: () {
-                                  _timerService?.stop();
-                                  print(
-                                      " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
+                                //  _timerService?.stop();
+                                  // print(
+                                  //     " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
                                   showDialog(
                                       context: context,
                                       builder: (context) {
                                         return ConfirmPayDialog(onConfirm: () {
-                                          _markTradeAsPaid(
-                                              context, widget.username);
+
                                           _timerService!.stop();
-                                          print(
-                                              "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
+                                           print("Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
+
+                                          _markTradeAsPaid(context, widget.username);
+
 
                                           Navigator.pop(context);
                                         }, onCancel: () {
@@ -1884,6 +1889,8 @@ Widget _buildStatRow(String title, String value, double fontSize) {
   );
 }
 
+
+
 class TimerService {
   Timer? _timer;
   int _elapsedTime = 0;
@@ -1897,8 +1904,14 @@ class TimerService {
     required this.onComplete,
   });
 
-  // Start the timer
+  // Start the timer only if no timer is currently running
   void start() {
+    // Prevent starting another timer if one is already running
+    if (_timer != null && _timer!.isActive) {
+      print("Timer is already running.");
+      return;
+    }
+
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       _elapsedTime++;
       onTick(_elapsedTime);
@@ -1909,12 +1922,18 @@ class TimerService {
         onComplete();
       }
     });
+
+    print("Timer started.");
   }
 
-  // Stop the timer without resetting elapsed time
+  // Stop the timer and reset it properly
   void stop({bool resetTime = false}) {
-    _timer?.cancel();
-    print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
+    if (_timer != null) {
+      _timer!.cancel();
+      _timer = null; // Ensure the timer is set to null after stopping
+      print("Timer stopped at $_elapsedTime seconds");
+    }
+
     if (resetTime) {
       _elapsedTime = 0;
     }
@@ -1923,19 +1942,31 @@ class TimerService {
   int getElapsedTime() => _elapsedTime;
 }
 
+
 // class TimerService {
 //   Timer? _timer;
 //   int _elapsedTime = 0;
 //   final void Function(int) onTick;
+//   final int duration;
+//   final Future<void> Function() onComplete;
 
-//   TimerService(this.onTick);
+//   TimerService({
+//     required this.onTick,
+//     required this.duration,
+//     required this.onComplete,
+//   });
 
 //   // Start the timer
 //   void start() {
-//     _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+//     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
 //       _elapsedTime++;
 //       onTick(_elapsedTime);
 //       print('Elapsed time: $_elapsedTime seconds');
+
+//       if (_elapsedTime >= duration) {
+//         stop();
+//         onComplete();
+//       }
 //     });
 //   }
 
@@ -1949,42 +1980,5 @@ class TimerService {
 //   }
 
 //   int getElapsedTime() => _elapsedTime;
-
-//   Future<void> _fetchDurationFromFirestore() async {
-//     try {
-//       final doc = await FirebaseFirestore.instance
-//           .collection('Duration')
-//           .doc('Duration')
-//           .get();
-
-//       if (doc.exists) {
-//         final data = doc.data();
-//         int firestoreDuration = data?['Duration'] ?? 0;
-//       } else {
-//         print('No duration data found.');
-//       }
-//     } catch (e) {
-//       print('Error fetching duration from Firestore: $e');
-//     }
-//   }
 // }
 
-// class TimerService {
-//   Timer? _timer;
-//   int _elapsedTime = 0;
-//   final void Function(int) onTick;
-
-//   TimerService(this.onTick);
-
-//   void start() {
-//     _timer = Timer.periodic(Duration(seconds: 2), (timer) {
-//       _elapsedTime++;
-//       onTick(_elapsedTime);
-//       print('Elapsed time: $_elapsedTime seconds'); // Print to console
-//     });
-//   }
-
-//   void stop() {
-//     _timer?.cancel();
-//   }
-// }

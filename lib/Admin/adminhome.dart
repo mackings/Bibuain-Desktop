@@ -182,81 +182,124 @@ class _AdminHomeState extends State<AdminHome> {
 
 
   String _selectedStaffId = '';
-  final TextEditingController _numberOfTradesController =
-      TextEditingController();
-  Future<void> _showAssignDialog() async {
-    final staffIds = await _fetchStaffIds();
+  final TextEditingController _numberOfTradesController =TextEditingController();
+  final _timeLimitInMinutesController = TextEditingController();
+  final _timeLimitInHoursController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assign Trade'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButton<String>(
-                    value: _selectedStaffId.isEmpty ? null : _selectedStaffId,
-                    hint: Text('Select Staff'),
-                    items: staffIds.map((staffId) {
-                      return DropdownMenuItem<String>(
-                        value: staffId,
-                        child: Text(staffId),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedStaffId = value ?? '';
-                        print(_selectedStaffId);
-                      });
-                    },
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(width: 0.5)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(5.0),
-                      child: TextField(
-                          controller: _numberOfTradesController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                              border: InputBorder.none,
-                              hintText: "Enter Number of Trades",
-                              helperStyle: GoogleFonts.montserrat())),
+
+
+Future<void> _showAssignDialog() async {
+  final staffIds = await _fetchStaffIds();
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setState) {
+          return AlertDialog(
+            title: Text('Assign Trade'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<String>(
+                  value: _selectedStaffId.isEmpty ? null : _selectedStaffId,
+                  hint: Text('Select Staff'),
+                  items: staffIds.map((staffId) {
+                    return DropdownMenuItem<String>(
+                      value: staffId,
+                      child: Text(staffId),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedStaffId = value ?? '';
+                      print(_selectedStaffId);
+                    });
+                  },
+                ),
+                SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(width: 0.5)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextField(
+                      controller: _numberOfTradesController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "Enter Number of Trades",
+                        helperStyle: GoogleFonts.montserrat(),
+                      ),
                     ),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_selectedStaffId.isNotEmpty &&
-                        _numberOfTradesController.text.isNotEmpty) {
-                      _assignTrades();
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: Text('Assign'),
+                SizedBox(height: 10),
+                // Time limit for minutes
+                Container(
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(width: 0.5)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextField(
+                      controller: _timeLimitInMinutesController, // New controller
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "Enter Time Limit (Minutes)",
+                        helperStyle: GoogleFonts.montserrat(),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10),
+                // Time limit for hours
+                Container(
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(width: 0.5)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextField(
+                      controller: _timeLimitInHoursController, // New controller
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "Enter Time Limit (Hours)",
+                        helperStyle: GoogleFonts.montserrat(),
+                      ),
+                    ),
+                  ),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (_selectedStaffId.isNotEmpty &&
+                      _numberOfTradesController.text.isNotEmpty) {
+                    _assignTrades();
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Text('Assign'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
 
   Future<List<String>> _fetchStaffIds() async {
     final firestore = FirebaseFirestore.instance;
@@ -264,39 +307,48 @@ class _AdminHomeState extends State<AdminHome> {
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
-  Future<void> _assignTrades() async {
-    final staffId = _selectedStaffId;
-    final numberOfTrades = _numberOfTradesController.text;
 
-    final url = 'https://tester-1wva.onrender.com/assign/manual';
 
-    final body = jsonEncode({
-      'staffId': staffId,
-      'numberOfTrades': numberOfTrades,
-    });
+Future<void> _assignTrades() async {
+  final staffId = _selectedStaffId;
+  final numberOfTrades = _numberOfTradesController.text;
 
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
+  // Add time limit values (replace with your actual inputs)
+  final timeLimitInMinutes = _timeLimitInMinutesController.text; // Assume you have a TextEditingController for minutes
+  final timeLimitInHours = _timeLimitInHoursController.text; // Assume you have a TextEditingController for hours
+
+  final url = 'https://tester-1wva.onrender.com/assign/manual';
+
+  final body = jsonEncode({
+    'staffId': staffId,
+    'numberOfTrades': numberOfTrades,
+    'timeLimitInMinutes': timeLimitInMinutes.isNotEmpty ? timeLimitInMinutes : null, // Only include if not empty
+    'timeLimitInHours': timeLimitInHours.isNotEmpty ? timeLimitInHours : null, // Only include if not empty
+  });
+
+  try {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      // Handle successful response
+      print('Trade assigned successfully');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Trade Assigned Successfully')),
       );
-
-      if (response.statusCode == 200) {
-        // Handle successful response
-        print('Trade assigned successfully');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trade Assigned Successfully')),
-        );
-      } else {
-        // Handle error response
-        print('Failed to assign trade');
-      }
-    } catch (e) {
-      // Handle any errors
-      print('Error: $e');
+    } else {
+      print('Failed to assign trade: ${response.body}');
     }
+  } catch (e) {
+    // Handle any errors
+    print('Error: $e');
   }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -327,6 +379,7 @@ class _AdminHomeState extends State<AdminHome> {
         ),
       ),
       SizedBox(width: 30),
+
       ElevatedButton(
         onPressed: _showSetSecondsDialog,
         child: Text(
@@ -338,6 +391,7 @@ class _AdminHomeState extends State<AdminHome> {
         ),
       ),
       SizedBox(width: 20),
+
       ElevatedButton(
         onPressed: _fetchData,
         child: Text(
@@ -505,6 +559,7 @@ class _AdminHomeState extends State<AdminHome> {
                   ),
                 ),
               ),
+            
             ],
           ),
 
@@ -523,9 +578,11 @@ SizedBox(height: 30),
                   paidTrades: staff['paidTrades']?.toString() ?? '0',
                   unpaidTrades: staff['unpaidTrades']?.toString() ?? '0',
                   totalAssignedTrades: staff['totalAssignedTrades']?.toString() ?? '0',
-                  mispaid: ((double.tryParse(staff['totalFiatRequested']?.toString() ?? '0') ?? 0) -
-                          (double.tryParse(staff['totalAmountPaid']?.toString() ?? '0') ?? 0))
-                      .toStringAsFixed(2),
+                  mispaid: staff['flaggedTrades']?.toString() ?? '0',
+
+                  // mispaid: ((double.tryParse(staff['totalFiatRequested']?.toString() ?? '0') ?? 0) -
+                  //         (double.tryParse(staff['totalAmountPaid']?.toString() ?? '0') ?? 0))
+                  //     .toStringAsFixed(2),
                   backgroundColor: Colors.white,
                 ),
               );
