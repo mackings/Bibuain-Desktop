@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:bdesktop/Manual/Api%20services/BankService.dart';
+import 'package:bdesktop/Manual/Api%20services/RatesService.dart';
+import 'package:bdesktop/Manual/Api%20services/TradeService.dart';
+import 'package:bdesktop/Manual/Api%20services/clockinApi.dart';
+import 'package:bdesktop/Trainer/login.dart';
 import 'package:bdesktop/widgets/paid.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
+
 
 class Payment extends StatefulWidget {
   final String username;
@@ -15,10 +22,10 @@ class Payment extends StatefulWidget {
   const Payment({Key? key, required this.username}) : super(key: key);
 
   @override
-  State<Payment> createState() => _PayersState();
+  State<Payment> createState() => _PaymentState();
 }
 
-class _PayersState extends State<Payment> {
+class _PaymentState extends State<Payment> {
   final TextEditingController _messageController = TextEditingController();
   String _responseMessage = '';
 
@@ -46,92 +53,9 @@ class _PayersState extends State<Payment> {
   int? costPrice;
   int? RealTime;
 
-  Map<String, String> bankCodes = {
-    "Abbey Mortgage Bank": "801",
-    "Above Only MFB": "51226",
-    "Access Bank": "044",
-    "Access": "044",
-    "Access Bank (Diamond)": "063",
-    "ALAT by WEMA": "035A",
-    "Amju Unique MFB": "50926",
-    "ASO Savings and Loans": "401",
-    "Bainescredit MFB": "51229",
-    "Bowen Microfinance Bank": "50931",
-    "Carbon": "565",
-    "Chipper cash": "120001",
-    "9 payment service": "120001",
-    "CEMCS Microfinance Bank": "50823",
-    "Citibank Nigeria": "023",
-    "Coronation Merchant Bank": "559",
-    "Ecobank Nigeria": "050",
-    "Ekondo Microfinance Bank": "562",
-    "Eyowo": "50126",
-    "Fidelity Bank": "070",
-    "Firmus MFB": "51314",
-    "First Bank of Nigeria": "011",
-    "First Bank": "011",
-    "First City Monument Bank": "214",
-    "FCMB": "214",
-    "FSDH Merchant Bank Limited": "501",
-    "Globus Bank": "00103",
-    "GoMoney": "100022",
-    "Guaranty Trust Bank": "058",
-    "GT Bank": "058",
-    "GT": "058",
-    "Hackman Microfinance Bank": "51233",
-    "Hasal Microfinance Bank": "50383",
-    "Heritage Bank": "030",
-    "Ibile Microfinance Bank": "51244",
-    "Infinity MFB": "50457",
-    "Jaiz Bank": "301",
-    "Kadpoly MFB": "50502",
-    "Keystone Bank": "082",
-    "Kredi Money MFB LTD": "50211",
-    "Kuda Bank": "50211",
-    "Kuda": "50211",
-    "Lagos Building Investment Company Plc.": "90052",
-    "Links MFB": "50549",
-    "Lotus Bank": "303",
-    "Mayfair MFB": "50563",
-    "Moniepoint MFB": "50515",
-    "Moniepoint": "50515",
-    "Monie point": "50515",
-    "Moni point": "50515",
-    "Mint MFB": "50212",
-    "Paga": "100002",
-    "PalmPay": "999991",
-    "Palm Pay": "999991",
-    "Parallex Bank": "526",
-    "Parkway - ReadyCash": "311",
-    "Opay": "999992",
-    "Petra Microfinance Bank Plc": "50746",
-    "Polaris Bank": "076",
-    "Providus Bank": "101",
-    "QuickFund MFB": "51268",
-    "Rand Merchant Bank": "502",
-    "Rubies MFB": "51318",
-    "Sparkle Microfinance Bank": "51320",
-    "Stanbic IBTC Bank": "221",
-    "Stanbic IBTC": "221",
-    "Standard Chartered Bank": "068",
-    "Sterling Bank": "232",
-    "Suntrust Bank": "100",
-    "TAJ Bank": "302",
-    "Tangerine Money": "51269",
-    "TCF MFB": "51211",
-    "Titan Bank": "102",
-    "Unical MFB": "50855",
-    "Union Bank of Nigeria": "032",
-    "Union Bank": "032",
-    "United Bank For Africa": "033",
-    "UBA": "033",
-    "Unity Bank": "215",
-    "VFD Microfinance Bank Limited": "566",
-    "VFD": "566",
-    "Wema Bank": "035",
-    "Zenith Bank": "057",
-    "Zenith": "057"
-  };
+  final RateService _rateService = RateService();
+  final TradeService _tradeService = TradeService();
+  final accountService = AccountService();
 
   // FORMATTERS
   DateTime _convertToDateTime(dynamic timestamp) {
@@ -257,6 +181,7 @@ class _PayersState extends State<Payment> {
         print(response.body);
         setState(() {
           _responseMessage = 'Message sent successfully.';
+          // _messageController.clear();
         });
       } else {
         print(response.body);
@@ -271,66 +196,18 @@ class _PayersState extends State<Payment> {
     }
   }
 
-  Future<void> _verifyAccount(BuildContext context) async {
-    // Check if this account was already verified
-    if (verifiedAccounts.contains(recentAccountNumber)) {
-      print('Account $recentAccountNumber already verified');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$recentAccountNumber Has been Verified.',
-            style: GoogleFonts.poppins(),
-          ),
-          duration: Duration(seconds: 5),
-        ),
-      );
+  void verifyAccountWithService(
+      BuildContext context, AccountService accountService) async {
+    if (recentAccountNumber == null || recentBankCode == null) {
+      print('Error: Account number or bank code is missing');
       return;
     }
-
-    final url = Uri.parse(
-        'https://server-eight-beige.vercel.app/api/wallet/generateBankDetails/$recentAccountNumber/$recentBankCode');
-
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        //2   _timerService!.start();
-        _initializeTimer();
-
-        final data = json.decode(response.body);
-        final accountName = data['data']['account_name'];
-        print('Verified >>> : $data');
-        print(">>>>${verifiedAccounts}<<<<<<<");
-
-        // Show SnackBar with the account name
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$accountName',
-              style: GoogleFonts.poppins(),
-            ),
-            duration: Duration(seconds: 5),
-          ),
-        );
-
-        setState(() {
-          isVerified = true;
-          verifiedAccounts
-              .add(recentAccountNumber!); // Add account to verified set
-        });
-      } else {
-        setState(() {
-          isVerified = false;
-        });
-
-        print('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() {
-        isVerified = false;
-      });
-
-      print('Error: $e');
-    }
+    await accountService.verifyAccount(
+      context,
+      recentAccountNumber!,
+      recentBankCode!,
+      _initializeTimer,
+    );
   }
 
   Map<String, dynamic>? _checkForBankDetails(
@@ -358,65 +235,33 @@ class _PayersState extends State<Payment> {
     return null;
   }
 
-  void _processMessages(List<Map<String, dynamic>> messages) {
-    String? newAccountNumber;
-    String? newPersonName;
-    String? newBankName;
-    String? newBankCode;
 
-    for (var message in messages) {
-      final messageText = message['text'].toString();
+void handleIncomingMessages(
+  List<Map<String, dynamic>> messages,
+  BuildContext context,
+  String? recentAccountNumber,
+  String? recentPersonName,
+  String? recentBankName,
+  String? recentBankCode,
+  AccountService accountService,
+  void Function() initializeTimer, // Your timer initialization function
+) {
+  accountService.processMessages(
+    messages,
+    context,
+    recentAccountNumber,
+    recentPersonName,
+    recentBankName,
+    recentBankCode,
+    initializeTimer,
+  );
+}
 
-      // Regex to find 10-digit account number
-      final accountNumberRegex = RegExp(r'\b\d{10}\b');
-      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
 
-      // Regex to find names in the format "First Last" or just a single name
-      final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
-      final nameMatch = nameRegex.firstMatch(messageText);
 
-      // Find the bank name from the bankCodes map
-      String? bankNameMatch;
-      for (var bankName in bankCodes.keys) {
-        if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
-          bankNameMatch = bankName;
-          newBankCode = bankCodes[bankName];
-          break;
-        }
-      }
 
-      if (accountNumberMatch != null) {
-        newAccountNumber = accountNumberMatch.group(0);
-      }
-      if (nameMatch != null) {
-        newPersonName = nameMatch.group(0);
-      }
-      if (bankNameMatch != null) {
-        newBankName = bankNameMatch;
-      }
-    }
 
-    if (newAccountNumber != recentAccountNumber ||
-        newPersonName != recentPersonName ||
-        newBankName != recentBankName ||
-        newBankCode != recentBankCode) {
-      setState(() {
-        recentAccountNumber = newAccountNumber;
-        recentPersonName = newPersonName;
-        recentBankName = newBankName;
-        recentBankCode = newBankCode;
-
-        print("Name: >> $recentPersonName");
-        print('Account Nos: >>> $recentAccountNumber');
-        print('Bank: >>>> $recentBankName');
-        print('Bank Code: >>>> $recentBankCode');
-
-        _verifyAccount(context);
-      });
-    }
-  }
-
-  Future<void> _markAsComplaint() async {
+  Future<void> _removeTradeByHash() async {
     if (selectedTradeHash == null) {
       setState(() {
         _responseMessage = 'No trade selected.';
@@ -425,26 +270,26 @@ class _PayersState extends State<Payment> {
     }
 
     try {
+      // Check if the trade exists in Firestore
       final tradeDoc = await FirebaseFirestore.instance
-          .collection('manualsystem')
+          .collection('assignedTrades')
           .doc(selectedTradeHash)
           .get();
 
       if (tradeDoc.exists) {
-        final tradeData = tradeDoc.data() as Map<String, dynamic>;
-
+        // Remove the trade from 'assignedTrades'
         await FirebaseFirestore.instance
-            .collection('complaints')
+            .collection('assignedTrades')
             .doc(selectedTradeHash)
-            .set(tradeData);
-
-        await FirebaseFirestore.instance
-            .collection('manualsystem')
-            .doc(selectedTradeHash)
-            .update({'status': 'unresolved'});
+            .delete();
 
         setState(() {
-          _responseMessage = 'Trade marked as complaint successfully.';
+          _responseMessage =
+              'Trade removed successfully. Waiting for next trade.';
+          selectedTradeHash = null; // Reset selected trade hash
+          // Reset other UI elements or variables if needed
+          // Clear trade details, stop timers, etc.
+          _timerService?.stop(); // Stop any active timers
         });
       } else {
         setState(() {
@@ -458,17 +303,58 @@ class _PayersState extends State<Payment> {
     }
   }
 
+// Example function to wait for the next trade or handle logic for waiting
+  Future<void> _waitForNextTrade() async {
+    // Listen for updates from Firestore for new trades
+    FirebaseFirestore.instance
+        .collection('assignedTrades')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        // Automatically select the next trade if one comes in
+        setState(() {
+          selectedTradeHash = snapshot.docs.first.id; // Assign the new trade
+          _responseMessage = 'New trade received: ${selectedTradeHash}';
+        });
+      } else {
+        setState(() {
+          _responseMessage = 'Waiting for new trades.';
+        });
+      }
+    });
+  }
+
   Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+    int elapsedTime = _timerService!.getElapsedTime();
+    print("Marking trade at elapsed time: $elapsedTime");
+    await _tradeService.markTradeAsPaid(
+      tradeHash: selectedTradeHash!,
+      elapsedTime: elapsedTime,
+      amountPaid: fiatAmount,
+      loggedInStaffID: loggedInStaffID,
+      resetSelectedTrade: resetSelectedTrade,
+    );
+  }
+
+  void resetSelectedTrade() {
+    setState(() {
+      selectedTradeHash = null;
+    });
+  }
+
+//Complain
+
+  Future<void> _markTradeAsCC(BuildContext context, String username) async {
     try {
-      int elapsedTime = _timerService!.getElapsedTime();
-      print("Marking at >>>>>>>>>>>>> $elapsedTime");
+      // int elapsedTime = _timerService!.getElapsedTime();
+      //  print("Marking at >>>>>>>>>>>>> $elapsedTime");
 
       final response = await http.post(
         Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': selectedTradeHash,
-          'markedAt': '$elapsedTime', // Using the elapsed time
+          'markedAt': 'complain', // Using the elapsed time
           'amountPaid': fiatAmount,
         }),
       );
@@ -486,7 +372,7 @@ class _PayersState extends State<Payment> {
         });
 
         await FirebaseFirestore.instance
-            .collection('manualsystem')
+            .collection('trades')
             .doc(selectedTradeHash)
             .update({
           'isPaid': true,
@@ -497,7 +383,6 @@ class _PayersState extends State<Payment> {
           if (mounted) {
             setState(() {
               selectedTradeHash = null;
-              countdownComplete = true;
             });
           }
         });
@@ -509,65 +394,9 @@ class _PayersState extends State<Payment> {
         print('Failed to mark trade as paid: ${response.body}');
       }
     } catch (e) {
-      print('Error making API call: $e');
-    }
-  }
-
-  Future<void> _markTradeAsPaids(BuildContext context, String username) async {
-    if (_timerService == null) {
-      print('Error: TimerService is not initialized.');
-      return;
-    }
-
-    try {
-      int elapsedTime = _timerService!.getElapsedTime();
-      print("Auto Marking >>>>>>>>>>>>> $elapsedTime");
-
-      final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': selectedTradeHash,
-          'markedAt': 'Automatic',
-          'amountPaid': fiatAmount,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        print(">>>>> Marked ${response.body}");
-
-        _timerService!.stop(resetTime: true);
-
-        await FirebaseFirestore.instance
-            .collection('staff')
-            .doc(loggedInStaffID)
-            .update({
-          'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
-        });
-
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({
-          'isPaid': true,
-        });
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              selectedTradeHash = null;
-              countdownComplete = true;
-            });
-          }
-        });
-
-        setState(() {
-          selectedTradeHash = null; // Reset selected trade
-        });
-      } else {
-        print('Failed to mark trade as paid: ${response.body}');
-      }
-    } catch (e) {
+      setState(() {
+        selectedTradeHash = null;
+      });
       print('Error making API call: $e');
     }
   }
@@ -576,12 +405,13 @@ class _PayersState extends State<Payment> {
     int totalTrades = 0;
     int tradesMarkedWithNumbers = 0;
     int tradesMarkedAutomatic = 0;
+    int tradesMarkedInvalid = 0; // Counter for invalid trades
     double totalSpeed = 0;
     int count = 0;
 
     // Fetch staff document from Firestore
     DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-        .collection('staff')
+        .collection('Allstaff')
         .doc(widget.username)
         .get();
 
@@ -597,9 +427,12 @@ class _PayersState extends State<Payment> {
           // If trade is paid, check for 'markedAt'
           String? markedAt = trade['markedAt'];
 
-          // Check if marked automatically
-          if (markedAt == null || markedAt.toLowerCase() == 'automatic') {
+          if (markedAt == null ||
+              markedAt.toLowerCase() == 'automatic' ||
+              markedAt.toLowerCase() == 'expired') {
             tradesMarkedAutomatic++; // Trade marked automatically
+          } else if (markedAt.toLowerCase() == 'complain') {
+            tradesMarkedInvalid++; // Trade marked invalid
           } else {
             // Try parsing the markedAt string into a double
             double? markedAtValue = double.tryParse(markedAt);
@@ -622,130 +455,11 @@ class _PayersState extends State<Payment> {
       'totalTrades': totalTrades,
       'tradesMarkedAutomatic': tradesMarkedAutomatic,
       'tradesMarkedWithNumbers': tradesMarkedWithNumbers,
+      'tradesMarkedInvalid': tradesMarkedInvalid, // Include invalid trades
       'averageSpeed': averageSpeed,
     };
   }
 
-  // TRADE MONEY FUNCTIONS END
-
-//Paxful Rates
-
-  Future fetchPaxfulrates() async {
-    const String url = 'https://tester-1wva.onrender.com/paxful/paxful/rates';
-    try {
-      // Make a POST request
-      final http.Response response = await http.post(
-        Uri.parse(url),
-      );
-      if (response.statusCode == 200) {
-        // Decode the response body
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        // Extract the price and convert it to an int
-        double price = responseData['price'];
-        int priceAsInt = price.toInt();
-        print('Paxful USD RATE: $priceAsInt');
-
-        return priceAsInt;
-      } else {
-        print('Failed to fetch price: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error: $e');
-      return null;
-    }
-  }
-
-  Future fetchBinanceRates() async {
-    // Define the URL
-    const String url = 'https://tester-1wva.onrender.com/paxful/binance/rates';
-
-    try {
-      // Make the POST request
-      final http.Response response = await http.post(
-        Uri.parse(url),
-      );
-
-      // Check if the response was successful
-      if (response.statusCode == 200) {
-        // Decode the response body
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        // Extract the price from the response
-        int price = responseData['price'];
-        print('Binance USD RATE: ${price.toString()}');
-
-        return price;
-      } else {
-        // If the server did not return a 200 OK response,
-        // throw an exception.
-        print('Failed to fetch Binance price: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error: $e');
-      return null;
-    }
-  }
-
-  void calculatePrices() async {
-    int paxfulRate = await fetchPaxfulrates();
-    int binanceRate = await fetchBinanceRates();
-    int systemOverride = 1587;
-    int markup = 250000;
-
-    if (paxfulRate != null && binanceRate != null) {
-      final formatter = NumberFormat("#,##0");
-
-      String formattedPaxfulRate = formatter.format(paxfulRate);
-      String formattedBinanceRate = formatter.format(binanceRate);
-      String formattedSystemOverride = formatter.format(systemOverride);
-      String formattedMarkup = formatter.format(markup);
-
-      // Print the formatted rates before any calculation
-
-      print("Paxful Rate: $formattedPaxfulRate");
-      print("Binance Rate: $formattedBinanceRate");
-      print("System Override: $formattedSystemOverride");
-      print("Markup: $formattedMarkup");
-
-      // Continue with calculations using the original int values
-      int sellingPrice = paxfulRate * systemOverride;
-
-      print("Selling Price: $sellingPrice");
-
-      if (paxfulRate > binanceRate) {
-        // Calculate the difference between the rates
-        int rateDifference = paxfulRate - binanceRate;
-        print("Rate Diff Pax/Bin: $rateDifference");
-
-        // Calculate the cost price using the given logic
-        int costPrice = (rateDifference + 00) + sellingPrice;
-
-        print("Cost Price when Paxful is higher: $costPrice");
-
-        setState(() {
-          this.sellingPrice = sellingPrice;
-          this.costPrice = costPrice;
-        });
-      } else {
-        // Calculate the cost price when Binance rate is higher
-        int rateDifference = paxfulRate - binanceRate;
-        int costPrice = systemOverride - sellingPrice;
-
-        print("Cost Price when Binance is higher: $costPrice");
-        print("Rate Diff Pax/Bin: $rateDifference");
-
-        setState(() {
-          this.sellingPrice = sellingPrice;
-          this.costPrice = costPrice;
-        });
-      }
-    }
-  }
-
-//NOTIFIERS
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
     currentTradeNotifier.value = null;
@@ -797,6 +511,7 @@ class _PayersState extends State<Payment> {
   }
 
   void _removeCurrentTrade() async {
+
     String currentTradeHash = selectedTradeHash!;
     DocumentReference staffRef =
         FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
@@ -815,7 +530,7 @@ class _PayersState extends State<Payment> {
     });
 
     setState(() {
-      _remainingTime = 60;
+      // _remainingTime = 60;
     });
   }
 
@@ -825,7 +540,7 @@ class _PayersState extends State<Payment> {
 
     // Fetch staff document from Firestore
     DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-        .collection('staff')
+        .collection('Allstaff')
         .doc(widget.username)
         .get();
 
@@ -892,7 +607,7 @@ class _PayersState extends State<Payment> {
       },
       duration: firestoreDuration,
       onComplete: () async {
-        await _markTradeAsPaids(context, widget.username);
+        await _markTradeAsPaid(context, widget.username);
       },
     );
     print('_timerService initialized');
@@ -919,9 +634,90 @@ class _PayersState extends State<Payment> {
     }
   }
 
+  String? token;
+  Future<String?> _getTokenFromPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token'); // Retrieve the token
+  }
+
+  Future<void> _loadToken() async {
+    token = await _getTokenFromPrefs(); // Fetch the token
+    print(token);
+    setState(() {});
+  }
+
+  Future<void> _showClockInDialog() async {
+    // Fetch the token from SharedPreferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token'); // Assuming you saved the token
+
+    if (token == null) {
+      // Handle case where the token is not found
+      return;
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing the dialog
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Starting Shift',
+            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+          ),
+          content: Text(
+            'Are you ready to Start your Shift?',
+            style: GoogleFonts.montserrat(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Map<String, dynamic> response =
+                    await ApiService().clockIn(token);
+                if (response['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                      'Clock in successful!',
+                      style: GoogleFonts.montserrat(),
+                    )),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                      'Clock in failed: ${response['message']}',
+                      style: GoogleFonts.montserrat(),
+                    )),
+                  );
+                }
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text(
+                'Yes',
+                style: GoogleFonts.montserrat(),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'No',
+                style: GoogleFonts.montserrat(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadToken();
+   // _showClockInDialog();
     _fetchDurationFromFirestore();
     selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
@@ -929,13 +725,12 @@ class _PayersState extends State<Payment> {
     setState(() {
       selectedTradeHash = null;
     });
-    calculatePrices();
-    // _timerService = TimerService((elapsedTime) {});
+    _rateService.calculatePrices(setState);
   }
 
   void _listenToStaffChanges() {
     _staffSubscription = FirebaseFirestore.instance
-        .collection('staff')
+        .collection('Allstaff')
         .doc(loggedInStaffID)
         .snapshots()
         .listen((staffSnapshot) {
@@ -962,7 +757,7 @@ class _PayersState extends State<Payment> {
 
   void _listenToTradeMessages(String tradeHash) {
     _tradeMessagesSubscription = FirebaseFirestore.instance
-        .collection('tradeMessages')
+        .collection('manualmessages')
         .doc(tradeHash)
         .snapshots()
         .listen((tradeSnapshot) {});
@@ -984,12 +779,40 @@ class _PayersState extends State<Payment> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        actions: [],
+        automaticallyImplyLeading: false,
+        actions: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedTradeHash = null;
+              });
+
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context) => LoginPage()));
+            },
+            child: Container(
+              height: 40,
+              width: 90,
+              decoration: BoxDecoration(
+                  color: Colors.black, borderRadius: BorderRadius.circular(10)),
+              child: Center(
+                  child: Text(
+                'Sign Out',
+                style: GoogleFonts.montserrat(
+                    fontWeight: FontWeight.w400, color: Colors.white),
+              )),
+            ),
+          ),
+          SizedBox(
+            width: 20,
+          )
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
+
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -1005,6 +828,8 @@ class _PayersState extends State<Payment> {
                         snapshot.data!['tradesMarkedAutomatic'];
                     final int tradesMarkedWithNumbers =
                         snapshot.data!['tradesMarkedWithNumbers'];
+                    final int tradesMarkedInvalid = snapshot.data![
+                        'tradesMarkedInvalid']; // Retrieve invalid trades
                     final double averageSpeed = snapshot.data!['averageSpeed'];
 
                     return Column(
@@ -1017,22 +842,23 @@ class _PayersState extends State<Payment> {
                               style: GoogleFonts.poppins(
                                   fontSize: 10.sp, fontWeight: FontWeight.w500),
                             ),
-                            SizedBox(
-                              width: 1.w,
-                            ),
+                            SizedBox(width: 1.w),
                             Text(widget.username),
                           ],
                         ),
-                        SizedBox(
-                          height: 2.h,
-                        ),
+                        SizedBox(height: 2.h),
                         Container(
-                          child: _buildTradeStatsContainer(
+                          child: Padding(
+                            padding: const EdgeInsets.all(15.0),
+                            child: _buildTradeStatsContainer(
                               context,
                               totalTrades,
                               tradesMarkedAutomatic,
                               tradesMarkedWithNumbers,
-                              averageSpeed),
+                              tradesMarkedInvalid, // Pass invalid trades to the container
+                              averageSpeed,
+                            ),
+                          ),
                         ),
                       ],
                     );
@@ -1042,14 +868,16 @@ class _PayersState extends State<Payment> {
                 },
               ),
             ),
+            
             SizedBox(
               width: 4.w,
             ),
+
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('staff')
+                    .collection('Allstaff')
                     .doc(loggedInStaffID)
                     .snapshots(),
                 builder: (context, staffSnapshot) {
@@ -1058,7 +886,6 @@ class _PayersState extends State<Payment> {
                     return Center(child: CircularProgressIndicator());
                   }
                   if (!staffSnapshot.hasData || !staffSnapshot.data!.exists) {
-                    // Stop the timer when no trades are assigned
                     _timerService?.stop();
                     return Center(child: Text('No assigned trades'));
                   }
@@ -1070,7 +897,15 @@ class _PayersState extends State<Payment> {
                   if (assignedTrades.isEmpty) {
                     // Stop the timer when no trades are assigned
                     _timerService?.stop();
-                    return Center(child: Text('No Trades assigned.'));
+                    return Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 70),
+                          child: Text(
+                            'Welcome ${widget.username}',
+                            style: GoogleFonts.montserrat(fontSize: 26),
+                          ),
+                        ));
                   }
 
                   // Filter out paid trades
@@ -1082,9 +917,16 @@ class _PayersState extends State<Payment> {
                     // Stop the timer when no unpaid trades exist
                     _timerService?.stop();
                     Kickstop();
+
                     return Align(
-                      alignment: Alignment.centerRight,
-                      child: Text('No Assigned Trade Yet.'),
+                      alignment: Alignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 150),
+                        child: Text(
+                          'No Assigned Trade Yet.',
+                          style: GoogleFonts.montserrat(),
+                        ),
+                      ),
                     );
                   }
 
@@ -1107,7 +949,7 @@ class _PayersState extends State<Payment> {
                   return StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('manualmessages')
-                        .doc(selectedTradeHash ?? '')
+                        .doc(selectedTradeHash)
                         .snapshots(),
                     builder: (context, tradeSnapshot) {
                       if (tradeSnapshot.connectionState ==
@@ -1150,7 +992,7 @@ class _PayersState extends State<Payment> {
                                   border: Border.all(width: 0.5),
                                 ),
                                 width: MediaQuery.of(context).size.width - 20,
-                                height: 50,
+                                height: 70,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Row(
@@ -1171,20 +1013,6 @@ class _PayersState extends State<Payment> {
                                               onTap: () {},
                                               child: Row(
                                                 children: [
-                                                  // CircularCountDownTimer(
-                                                  //   controller:
-                                                  //       _countdownController,
-                                                  //   width: 20,
-                                                  //   height: 20,
-                                                  //   duration: 30,
-                                                  //   fillColor: Colors.red,
-                                                  //   ringColor: Colors.black,
-                                                  //   onChange: (value) {
-                                                  //     print(
-                                                  //         " Real Time Data is >>>>>> $RealTime");
-                                                  //   },
-                                                  // ),
-
                                                   Icon(
                                                     Icons.run_circle_sharp,
                                                     size: 50,
@@ -1244,8 +1072,17 @@ class _PayersState extends State<Payment> {
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  //  _markAsComplaint();
-                                  print(selectedTradeHash);
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return ConfirmCCDialog(onConfirm: () {
+                                          _markTradeAsCC(
+                                              context, widget.username);
+                                          Navigator.pop(context);
+                                        }, onCancel: () {
+                                          Navigator.pop(context);
+                                        });
+                                      });
                                 },
                                 child: Container(
                                   height: 4.h,
@@ -1264,17 +1101,19 @@ class _PayersState extends State<Payment> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  _timerService?.stop();
-                                  print(
-                                      " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
+                                  //  _timerService?.stop();
+                                  // print(
+                                  //     " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
                                   showDialog(
                                       context: context,
                                       builder: (context) {
                                         return ConfirmPayDialog(onConfirm: () {
+                                          _timerService!.stop();
+                                          print(
+                                              "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
+
                                           _markTradeAsPaid(
                                               context, widget.username);
-                                          // _timerService!.stop();
-                                          //   print( "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
 
                                           Navigator.pop(context);
                                         }, onCancel: () {
@@ -1308,6 +1147,7 @@ class _PayersState extends State<Payment> {
             ),
 
 
+            
             SizedBox(width: 20),
 
             Expanded(
@@ -1348,7 +1188,15 @@ class _PayersState extends State<Payment> {
 
                               // Process messages
                               WidgetsBinding.instance.addPostFrameCallback((_) {
-                                _processMessages(messages);
+                              //  _processMessages(messages);
+                              handleIncomingMessages(messages, 
+                              context, 
+                              recentAccountNumber, 
+                              recentPersonName, 
+                              recentBankName, 
+                              recentBankCode, 
+                              accountService, 
+                              _initializeTimer);
                               });
 
                               return ListView.builder(
@@ -1416,6 +1264,9 @@ class _PayersState extends State<Payment> {
                             },
                           ),
                         ),
+
+
+                        
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -1464,13 +1315,11 @@ Widget _buildSellerDetailsUI(BuildContext context, String accountHolder,
     String accountNumber, String bankName, String amount) {
   return Column(
     children: [
-      // _buildHeaderContainer(context),
       SizedBox(height: 3.h),
       _buildDetailsContainer(
           context, accountHolder, accountNumber, bankName, amount,
           isChatDetails: false),
       SizedBox(height: 7.h),
-      // _buildFooterButtons(context),
     ],
   );
 }
@@ -1678,6 +1527,7 @@ Widget _buildTradeStatsContainer(
     int totalTrades,
     int tradesMarkedAutomatic,
     int tradesMarkedWithNumbers,
+    int tradesMarkedInvalid, // Add invalid trades
     double averageSpeed) {
   return Column(
     children: [
@@ -1686,7 +1536,7 @@ Widget _buildTradeStatsContainer(
           border: Border.all(width: 0.5),
           borderRadius: BorderRadius.circular(10),
         ),
-        width: 50.w,
+        width: MediaQuery.of(context).size.width * 0.5, // Responsive width
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
@@ -1694,25 +1544,28 @@ Widget _buildTradeStatsContainer(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                "Trade Stats",
-                style: GoogleFonts.poppins(
+                "Activity Stats",
+                style: GoogleFonts.montserrat(
                   textStyle: TextStyle(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 17, // Adjust font size as needed
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              SizedBox(height: 2.h),
-              _buildStatRow('Total Trades: ', totalTrades.toString(), 5.sp),
+              SizedBox(height: 8),
+              _buildStatRow('Total Trades: ', totalTrades.toString(), 12),
               Divider(),
               _buildStatRow(
-                  'Trades Unmarked: ', tradesMarkedAutomatic.toString(), 5.sp),
+                  'Trades Unmarked: ', tradesMarkedAutomatic.toString(), 12),
               Divider(),
               _buildStatRow(
-                  'Trades Marked: ', tradesMarkedWithNumbers.toString(), 5.sp),
+                  'Trades Marked: ', tradesMarkedWithNumbers.toString(), 12),
+              Divider(),
+              _buildStatRow('Invalid Trades: ', tradesMarkedInvalid.toString(),
+                  12), // Display invalid trades
               Divider(),
               _buildStatRow('Total Speed: ',
-                  '${averageSpeed.toStringAsFixed(2)} sec', 5.sp),
+                  '${averageSpeed.toStringAsFixed(2)} sec', 14),
             ],
           ),
         ),
@@ -1723,6 +1576,7 @@ Widget _buildTradeStatsContainer(
 
 Widget _buildStatRow(String title, String value, double fontSize) {
   return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
         title,
@@ -1753,8 +1607,14 @@ class TimerService {
     required this.onComplete,
   });
 
-  // Start the timer
+  // Start the timer only if no timer is currently running
   void start() {
+    // Prevent starting another timer if one is already running
+    if (_timer != null && _timer!.isActive) {
+      print("Timer is already running.");
+      return;
+    }
+
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       _elapsedTime++;
       onTick(_elapsedTime);
@@ -1765,12 +1625,18 @@ class TimerService {
         onComplete();
       }
     });
+
+    print("Timer started.");
   }
 
-  // Stop the timer without resetting elapsed time
+  // Stop the timer and reset it properly
   void stop({bool resetTime = false}) {
-    _timer?.cancel();
-    print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
+    if (_timer != null) {
+      _timer!.cancel();
+      _timer = null; // Ensure the timer is set to null after stopping
+      print("Timer stopped at $_elapsedTime seconds");
+    }
+
     if (resetTime) {
       _elapsedTime = 0;
     }

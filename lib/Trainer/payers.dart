@@ -1620,6 +1620,9 @@ Widget _buildSellerDetailsUI(BuildContext context, String accountHolder,
   );
 }
 
+
+
+
 Widget _buildSellerChatDetailsUI(BuildContext context, String? personName,
     String? accountNumber, String? bankName, String amount) {
   return Column(
@@ -1942,43 +1945,4 @@ class TimerService {
   int getElapsedTime() => _elapsedTime;
 }
 
-
-// class TimerService {
-//   Timer? _timer;
-//   int _elapsedTime = 0;
-//   final void Function(int) onTick;
-//   final int duration;
-//   final Future<void> Function() onComplete;
-
-//   TimerService({
-//     required this.onTick,
-//     required this.duration,
-//     required this.onComplete,
-//   });
-
-//   // Start the timer
-//   void start() {
-//     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-//       _elapsedTime++;
-//       onTick(_elapsedTime);
-//       print('Elapsed time: $_elapsedTime seconds');
-
-//       if (_elapsedTime >= duration) {
-//         stop();
-//         onComplete();
-//       }
-//     });
-//   }
-
-//   // Stop the timer without resetting elapsed time
-//   void stop({bool resetTime = false}) {
-//     _timer?.cancel();
-//     print("Timer Stopped at >>>>>>>>> $_elapsedTime seconds");
-//     if (resetTime) {
-//       _elapsedTime = 0;
-//     }
-//   }
-
-//   int getElapsedTime() => _elapsedTime;
-// }
 
