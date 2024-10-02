@@ -15,6 +15,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
+
+
+
 class Payment extends StatefulWidget {
   final String username;
 
@@ -30,21 +33,14 @@ class _PaymentState extends State<Payment> {
 
   String? selectedTradeHash;
   String? lastTradeHash;
-  String? accumulatedBankName;
-  String? accumulatedAccountNumber;
-  String? accumulatedAccountHolder;
+  dynamic fiatAmount;
+  late String loggedInStaffID;
+
 
   String? recentAccountNumber;
   String? recentPersonName;
   String? recentBankName;
   String? recentBankCode;
-
-  String? recentAccountNumber1;
-  String? recentPersonName1;
-  String? recentBankName1;
-  dynamic fiatAmount;
-
-  late String loggedInStaffID;
 
   bool isVerified = false;
   Set<String> verifiedAccounts = {};
@@ -57,6 +53,7 @@ class _PaymentState extends State<Payment> {
   final accountService = AccountService();
 
   // FORMATTERS
+
   DateTime _convertToDateTime(dynamic timestamp) {
     if (timestamp is Timestamp) {
       return timestamp.toDate();
@@ -67,275 +64,7 @@ class _PaymentState extends State<Payment> {
     }
   }
 
-  String formatNaira(dynamic amount) {
-    double parsedAmount;
-    if (amount is double) {
-      parsedAmount = amount;
-    } else if (amount is String) {
-      parsedAmount = double.tryParse(amount) ?? 0.0;
-    } else {
-      throw ArgumentError(
-          'Input should be a double or a string representing a number');
-    }
-
-    String formattedAmount = parsedAmount.toStringAsFixed(2).replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (Match match) => ',',
-        );
-    return '₦$formattedAmount';
-  }
-
-  String formatNairas(dynamic newamount) {
-    double parsedAmount;
-    if (newamount is double) {
-      parsedAmount = newamount;
-    } else if (newamount is String) {
-      parsedAmount = double.tryParse(newamount) ?? 0.0;
-    } else {
-      throw ArgumentError(
-          'Input should be a double or a string representing a number');
-    }
-
-    String formattednewAmount =
-        parsedAmount.toStringAsFixed(2).replaceAllMapped(
-              RegExp(r'\B(?=(\d{3})+(?!\d))'),
-              (Match match) => ',',
-            );
-    return '₦$formattednewAmount';
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return DateFormat.yMMMd().add_jm().format(dateTime);
-  }
-
-  Future<void> _sendMessage() async {
-    const String apiUrl =
-        'https://b-backend-xe8q.onrender.com/paxful/send-message';
-    final String messageText = _messageController.text;
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'message': messageText,
-          'hash': selectedTradeHash.toString()
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final messageData = {
-          'author': '2minmax_pro',
-          'text': messageText,
-          'timestamp': Timestamp.now(),
-          'type': 'text'
-        };
-
-        await FirebaseFirestore.instance
-            .collection('tradeMessages')
-            .doc(selectedTradeHash)
-            .update({
-          'messages': FieldValue.arrayUnion([messageData])
-        });
-
-        setState(() {
-          _responseMessage = 'Message sent successfully.';
-          _messageController.clear();
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Failed to send message: ${response.statusCode}';
-        });
-      }
-    } catch (error) {
-      setState(() {
-        _responseMessage = 'Error sending message: $error';
-      });
-    }
-  }
-
-  Future<void> _MarkPaid() async {
-    const String apiUrl = 'https://b-backend-xe8q.onrender.com/paxful/pay';
-    final String messageText = _messageController.text;
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body:
-            jsonEncode(<String, String>{'hash': selectedTradeHash.toString()}),
-      );
-
-      print('Hash for Marking ${selectedTradeHash}');
-
-      if (response.statusCode == 200) {
-        print(response.body);
-        setState(() {
-          _responseMessage = 'Message sent successfully.';
-          // _messageController.clear();
-        });
-      } else {
-        print(response.body);
-        setState(() {
-          _responseMessage = 'Failed to send message: ${response.statusCode}';
-        });
-      }
-    } catch (error) {
-      setState(() {
-        _responseMessage = 'Error sending message: $error';
-      });
-    }
-  }
-
-  void verifyAccountWithService(
-      BuildContext context, AccountService accountService) async {
-    if (recentAccountNumber == null || recentBankCode == null) {
-      print('Error: Account number or bank code is missing');
-      return;
-    }
-
-    await accountService.verifyAccount(
-      context,
-      recentAccountNumber!,
-      recentBankCode!,
-      _initializeTimer,
-    );
-  }
-
-  Map<String, dynamic>? _checkForBankDetails(
-      List<Map<String, dynamic>> messages) {
-    for (var message in messages) {
-      final text = message['text'];
-      if (text != null && text is Map<String, dynamic>) {
-        final bankAccount = text['bank_account'];
-        if (bankAccount != null && bankAccount is Map<String, dynamic>) {
-          final accountNumber = bankAccount['account_number'];
-          final bankName = bankAccount['bank_name'];
-          final holderName = bankAccount['holder_name'];
-
-          if (accountNumber != null && bankName != null && holderName != null) {
-            return {
-              'account_number': accountNumber,
-              'bank_name': bankName,
-              'holder_name': holderName,
-            };
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  void handleIncomingMessages(
-    List<Map<String, dynamic>> messages,
-    BuildContext context,
-    String? recentAccountNumber,
-    String? recentPersonName,
-    String? recentBankName,
-    String? recentBankCode,
-    AccountService accountService,
-    void Function() initializeTimer, // Your timer initialization function
-  ) {
-    accountService.processMessages(
-      messages,
-      context,
-      recentAccountNumber,
-      recentPersonName,
-      recentBankName,
-      recentBankCode,
-      initializeTimer,
-    );
-  }
-
-  Future<void> _removeTradeByHash() async {
-    if (selectedTradeHash == null) {
-      setState(() {
-        _responseMessage = 'No trade selected.';
-      });
-      return;
-    }
-
-    try {
-      // Check if the trade exists in Firestore
-      final tradeDoc = await FirebaseFirestore.instance
-          .collection('assignedTrades')
-          .doc(selectedTradeHash)
-          .get();
-
-      if (tradeDoc.exists) {
-        // Remove the trade from 'assignedTrades'
-        await FirebaseFirestore.instance
-            .collection('assignedTrades')
-            .doc(selectedTradeHash)
-            .delete();
-
-        setState(() {
-          _responseMessage =
-              'Trade removed successfully. Waiting for next trade.';
-          selectedTradeHash = null; // Reset selected trade hash
-          // Reset other UI elements or variables if needed
-          // Clear trade details, stop timers, etc.
-          _timerService?.stop(); // Stop any active timers
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Trade not found.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _responseMessage = 'An error occurred: $e';
-      });
-    }
-  }
-
-// Example function to wait for the next trade or handle logic for waiting
-  Future<void> _waitForNextTrade() async {
-    // Listen for updates from Firestore for new trades
-    FirebaseFirestore.instance
-        .collection('assignedTrades')
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        // Automatically select the next trade if one comes in
-        setState(() {
-          selectedTradeHash = snapshot.docs.first.id; // Assign the new trade
-          _responseMessage = 'New trade received: ${selectedTradeHash}';
-        });
-      } else {
-        setState(() {
-          _responseMessage = 'Waiting for new trades.';
-        });
-      }
-    });
-  }
-
-  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
-    int elapsedTime = _timerService!.getElapsedTime();
-    print("Marking trade at elapsed time: $elapsedTime");
-    await _tradeService.markTradeAsPaid(
-      tradeHash: selectedTradeHash!,
-      elapsedTime: elapsedTime,
-      amountPaid: fiatAmount,
-      loggedInStaffID: loggedInStaffID,
-      resetSelectedTrade: resetSelectedTrade,
-    );
-  }
-
-  void resetSelectedTrade() {
-    setState(() {
-      selectedTradeHash = null;
-    });
-  }
-
-//Complain
-
-  Future<void> _markTradeAsCC(BuildContext context, String username) async {
+    Future<void> _markTradeAsCC(BuildContext context, String username) async {
     try {
       // int elapsedTime = _timerService!.getElapsedTime();
       //  print("Marking at >>>>>>>>>>>>> $elapsedTime");
@@ -450,6 +179,124 @@ class _PaymentState extends State<Payment> {
       'averageSpeed': averageSpeed,
     };
   }
+
+
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat.yMMMd().add_jm().format(dateTime);
+  }
+
+
+  void verifyAccountWithService(
+      BuildContext context, AccountService accountService) async {
+    if (recentAccountNumber == null || recentBankCode == null) {
+      print('Error: Account number or bank code is missing');
+      return;
+    }
+
+    await accountService.verifyAccount(
+      context,
+      recentAccountNumber!,
+      recentBankCode!,
+      _initializeTimer,
+    );
+  }
+
+
+
+
+Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
+  String? accountNumber;
+  String? holderName;
+  String? bankName;
+
+  // Regex to find 10-digit account number
+  final accountNumberRegex = RegExp(r'\b\d{10}\b');
+  final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
+
+  for (var message in messages) {
+    final messageText = message['text'].toString();
+    
+    // Check for account number
+    final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
+    if (accountNumberMatch != null) {
+      accountNumber = accountNumberMatch.group(0);
+    }
+
+    // Check for name
+    final nameMatch = nameRegex.firstMatch(messageText);
+    if (nameMatch != null) {
+      holderName = nameMatch.group(0);
+    }
+
+    // Check for bank name using the bankCodes map
+    for (var bank in accountService.bankCodes.keys) {
+      if (messageText.toLowerCase().contains(bank.toLowerCase())) {
+        bankName = bank;
+        break;
+      }
+    }
+
+    // Once we have all details, return them
+    if (accountNumber != null && holderName != null && bankName != null) {
+      print('Bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+      return {
+        'account_number': accountNumber,
+        'holder_name': holderName,
+        'bank_name': bankName,
+      };
+    }
+  }
+
+  print('No valid bank details found.');
+  return null;
+}
+
+
+
+  void handleIncomingMessages(
+    List<Map<String, dynamic>> messages,
+    BuildContext context,
+    String? recentAccountNumber,
+    String? recentPersonName,
+    String? recentBankName,
+    String? recentBankCode,
+    AccountService accountService,
+    void Function() initializeTimer, 
+  ) {
+    accountService.processMessages(
+      messages,
+      context,
+      recentAccountNumber,
+      recentPersonName,
+      recentBankName,
+      recentBankCode,
+      initializeTimer,
+    );
+  }
+
+
+  Future<void> _markTradeAsPaid(BuildContext context, String username) async {
+    int elapsedTime = _timerService!.getElapsedTime();
+    print("Marking trade at elapsed time: $elapsedTime");
+    await _tradeService.markTradeAsPaid(
+      tradeHash: selectedTradeHash!,
+      elapsedTime: elapsedTime,
+      amountPaid: fiatAmount,
+      loggedInStaffID: loggedInStaffID,
+      resetSelectedTrade: resetSelectedTrade,
+    );
+  }
+
+
+  void resetSelectedTrade() {
+    setState(() {
+      selectedTradeHash = null;
+    });
+  }
+
+//Complain
+
+
 
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
@@ -802,6 +649,8 @@ class _PaymentState extends State<Payment> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
+
+
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -857,11 +706,13 @@ class _PaymentState extends State<Payment> {
                 },
               ),
             ),
+           
+           
             SizedBox(
               width: 4.w,
             ),
 
-            
+
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -946,18 +797,18 @@ class _PaymentState extends State<Payment> {
                         return Center(child: CircularProgressIndicator());
                       }
 
-                      if (!tradeSnapshot.hasData ||
-                          !tradeSnapshot.data!.exists) {
-                        if (autoMarkPaidTimer == null) {
-                          autoMarkPaidTimer =
-                              Timer(Duration(seconds: 10), () async {
-                            if (!tradeSnapshot.hasData ||
-                                !tradeSnapshot.data!.exists) {
-                              await _markTradeAsPaid(context, 'Auto');
-                            }
-                          });
-                        }
-                      }
+                      // if (!tradeSnapshot.hasData ||
+                      //     !tradeSnapshot.data!.exists) {
+                      //   if (autoMarkPaidTimer == null) {
+                      //     autoMarkPaidTimer =
+                      //         Timer(Duration(seconds: 10), () async {
+                      //       if (!tradeSnapshot.hasData ||
+                      //           !tradeSnapshot.data!.exists) {
+                      //         await _markTradeAsPaid(context, 'Auto');
+                      //       }
+                      //     });
+                      //   }
+                      // }
 
                       final tradeMessages =
                           tradeSnapshot.data!.data() as Map<String, dynamic>? ??
@@ -1034,25 +885,26 @@ class _PaymentState extends State<Payment> {
                           if (bankDetails != null)
                             Column(
                               children: [
-                                _buildSellerDetailsUI(
-                                  context,
-                                  bankDetails['holder_name'] ?? 'N/A',
-                                  bankDetails['account_number'] ?? 'N/A',
-                                  bankDetails['bank_name'] ?? 'N/A',
-                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
-                                )
+    if (bankDetails != null)
+      _buildSellerDetailsUI(
+        context,
+        bankDetails['holder_name'] ?? 'N/A',
+        bankDetails['account_number'] ?? 'N/A',
+        bankDetails['bank_name'] ?? 'N/A',
+        latestTrade['fiat_amount_requested'] ?? 'N/A',
+      ),
                               ],
                             )
                           else
                             Column(
                               children: [
-                                _buildSellerChatDetailsUI(
-                                  context,
-                                  recentPersonName,
-                                  recentAccountNumber,
-                                  recentBankName,
-                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
-                                )
+    _buildSellerChatDetailsUI(
+      context,
+      recentPersonName,
+      recentAccountNumber,
+      recentBankName,
+      latestTrade['fiat_amount_requested'] ?? 'N/A',
+    ),
                               ],
                             ),
                           Row(
@@ -1291,8 +1143,8 @@ class _PaymentState extends State<Payment> {
                               SizedBox(width: 10),
                               FloatingActionButton(
                                 mini: true,
-                                onPressed:
-                                    _sendMessage, // Handle sending messages
+                                onPressed:(){},
+                                  //  _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),
                               ),
                             ],
