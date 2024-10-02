@@ -20,6 +20,7 @@ class TradeService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': tradeHash,
+          'name':loggedInStaffID,
           'markedAt': '$elapsedTime', // Using the elapsed time
           'amountPaid': amountPaid,
         }),
@@ -30,7 +31,7 @@ class TradeService {
 
         // Remove trade hash from the assigned trades of the staff
         await FirebaseFirestore.instance
-            .collection('staff')
+            .collection('Allstaff')
             .doc(loggedInStaffID)
             .update({
           'assignedTrades': FieldValue.arrayRemove([tradeHash]),
@@ -38,7 +39,7 @@ class TradeService {
 
         // Update the trade document to mark it as paid
         await FirebaseFirestore.instance
-            .collection('trades')
+            .collection('manualsystem')
             .doc(tradeHash)
             .update({
           'isPaid': true,

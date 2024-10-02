@@ -131,6 +131,16 @@ class AccountService {
         final accountName = data['data']['account_name'];
         print('Verified >>> : $data');
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$accountName Verified for Payment.',
+            style: GoogleFonts.poppins(),
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
         verifiedAccounts.add(recentAccountNumber);
         isVerified = true;
       } else {
@@ -196,6 +206,7 @@ class AccountService {
         newPersonName != recentPersonName ||
         newBankName != recentBankName ||
         newBankCode != recentBankCode) {
+          
       recentAccountNumber = newAccountNumber;
       recentPersonName = newPersonName;
       recentBankName = newBankName;
@@ -215,4 +226,6 @@ class AccountService {
       );
     }
   }
+
+
 }

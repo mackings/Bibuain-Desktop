@@ -216,12 +216,12 @@ Future<void> _checkAndProceed(BuildContext context) async {
                           ),
 
                     // New User? Sign Up text
-                    SizedBox(height: 1.h), // Space between button and text
+                    SizedBox(height: 1.h), 
                     RichText(
                       text: TextSpan(
                         style: GoogleFonts.poppins(
-                          fontSize: 6.sp, // Adjust font size as needed
-                          color: Colors.black, // Default text color
+                          fontSize: 6.sp, 
+                          color: Colors.black, 
                         ),
                         children: [
                           TextSpan(text: 'New Payer? '), // Regular text

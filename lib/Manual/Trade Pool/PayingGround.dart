@@ -15,7 +15,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
-
 class Payment extends StatefulWidget {
   final String username;
 
@@ -109,10 +108,6 @@ class _PaymentState extends State<Payment> {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
-  // FORMATTERS END
-
-  ///  TRADE MONEY FUNCTIONS
-
   Future<void> _sendMessage() async {
     const String apiUrl =
         'https://b-backend-xe8q.onrender.com/paxful/send-message';
@@ -202,6 +197,7 @@ class _PaymentState extends State<Payment> {
       print('Error: Account number or bank code is missing');
       return;
     }
+
     await accountService.verifyAccount(
       context,
       recentAccountNumber!,
@@ -235,31 +231,26 @@ class _PaymentState extends State<Payment> {
     return null;
   }
 
-
-void handleIncomingMessages(
-  List<Map<String, dynamic>> messages,
-  BuildContext context,
-  String? recentAccountNumber,
-  String? recentPersonName,
-  String? recentBankName,
-  String? recentBankCode,
-  AccountService accountService,
-  void Function() initializeTimer, // Your timer initialization function
-) {
-  accountService.processMessages(
-    messages,
-    context,
-    recentAccountNumber,
-    recentPersonName,
-    recentBankName,
-    recentBankCode,
-    initializeTimer,
-  );
-}
-
-
-
-
+  void handleIncomingMessages(
+    List<Map<String, dynamic>> messages,
+    BuildContext context,
+    String? recentAccountNumber,
+    String? recentPersonName,
+    String? recentBankName,
+    String? recentBankCode,
+    AccountService accountService,
+    void Function() initializeTimer, // Your timer initialization function
+  ) {
+    accountService.processMessages(
+      messages,
+      context,
+      recentAccountNumber,
+      recentPersonName,
+      recentBankName,
+      recentBankCode,
+      initializeTimer,
+    );
+  }
 
   Future<void> _removeTradeByHash() async {
     if (selectedTradeHash == null) {
@@ -511,7 +502,6 @@ void handleIncomingMessages(
   }
 
   void _removeCurrentTrade() async {
-
     String currentTradeHash = selectedTradeHash!;
     DocumentReference staffRef =
         FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
@@ -717,7 +707,7 @@ void handleIncomingMessages(
   void initState() {
     super.initState();
     _loadToken();
-   // _showClockInDialog();
+    _showClockInDialog();
     _fetchDurationFromFirestore();
     selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
@@ -812,7 +802,6 @@ void handleIncomingMessages(
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
-
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -868,11 +857,11 @@ void handleIncomingMessages(
                 },
               ),
             ),
-            
             SizedBox(
               width: 4.w,
             ),
 
+            
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -978,6 +967,7 @@ void handleIncomingMessages(
 
                       Map<String, dynamic>? bankDetails =
                           _checkForBankDetails(messages);
+                      print("Messages Are $messages");
 
                       return Column(
                         children: [
@@ -1017,9 +1007,7 @@ void handleIncomingMessages(
                                                     Icons.run_circle_sharp,
                                                     size: 50,
                                                   ),
-                                                  SizedBox(
-                                                    width: 10,
-                                                  ),
+                                                  SizedBox(width: 10),
                                                   Text(
                                                     '${snapshot.data!.toStringAsFixed(2)} sec',
                                                     style: GoogleFonts.poppins(
@@ -1064,7 +1052,7 @@ void handleIncomingMessages(
                                   recentAccountNumber,
                                   recentBankName,
                                   latestTrade['fiat_amount_requested'] ?? 'N/A',
-                                ),
+                                )
                               ],
                             ),
                           Row(
@@ -1073,67 +1061,85 @@ void handleIncomingMessages(
                               GestureDetector(
                                 onTap: () async {
                                   showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return ConfirmCCDialog(onConfirm: () {
+                                    context: context,
+                                    builder: (context) {
+                                      return ConfirmCCDialog(
+                                        onConfirm: () {
                                           _markTradeAsCC(
                                               context, widget.username);
                                           Navigator.pop(context);
-                                        }, onCancel: () {
+                                        },
+                                        onCancel: () {
                                           Navigator.pop(context);
-                                        });
-                                      });
+                                        },
+                                      );
+                                    },
+                                  );
                                 },
                                 child: Container(
                                   height: 4.h,
                                   width: 30.w,
                                   child: Center(
-                                      child: Text(
-                                    "To CC",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.white),
-                                  )),
+                                    child: Text(
+                                      "To CC",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white),
+                                    ),
+                                  ),
                                   decoration: BoxDecoration(
-                                      color: Colors.black,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.white)),
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.white),
+                                  ),
                                 ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  //  _timerService?.stop();
-                                  // print(
-                                  //     " Timer Stopped >>>>>>>>>>>>>>> ${_timerService!._elapsedTime} Secs");
                                   showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return ConfirmPayDialog(onConfirm: () {
+                                    context: context,
+                                    builder: (context) {
+                                      return ConfirmPayDialog(
+                                        onConfirm: () {
                                           _timerService!.stop();
                                           print(
                                               "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
 
-                                          _markTradeAsPaid(
-                                              context, widget.username);
+                                          _tradeService.markTradeAsPaid(
+                                            tradeHash:
+                                                selectedTradeHash.toString(),
+                                            elapsedTime:
+                                                _timerService!._elapsedTime,
+                                            amountPaid: latestTrade[
+                                                'fiat_amount_requested'],
+                                            loggedInStaffID: loggedInStaffID,
+                                            resetSelectedTrade:
+                                                resetSelectedTrade,
+                                          );
 
                                           Navigator.pop(context);
-                                        }, onCancel: () {
+                                        },
+                                        onCancel: () {
                                           Navigator.pop(context);
-                                        });
-                                      });
+                                        },
+                                      );
+                                    },
+                                  );
                                 },
                                 child: Container(
                                   height: 4.h,
                                   width: 30.w,
                                   child: Center(
-                                      child: Text(
-                                    "Mark Paid",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black),
-                                  )),
+                                    child: Text(
+                                      "Mark Paid",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.black),
+                                    ),
+                                  ),
                                   decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.black)),
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.black),
+                                  ),
                                 ),
                               )
                             ],
@@ -1145,15 +1151,13 @@ void handleIncomingMessages(
                 },
               ),
             ),
-
-
-            
             SizedBox(width: 20),
-
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
-                  ? Center(child: Text(''))
+                  ? Center(
+                      child:
+                          Text('')) // Display nothing when no trade is selected
                   : Column(
                       children: [
                         Expanded(
@@ -1161,7 +1165,8 @@ void handleIncomingMessages(
                             key: ValueKey(selectedTradeHash),
                             stream: FirebaseFirestore.instance
                                 .collection('manualmessages')
-                                .doc(selectedTradeHash)
+                                .doc(
+                                    selectedTradeHash) // Fetch messages for the selected trade
                                 .snapshots(),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState ==
@@ -1174,29 +1179,33 @@ void handleIncomingMessages(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text("", style: GoogleFonts.poppins())
+                                      Text("",
+                                          style: GoogleFonts
+                                              .poppins()) // Empty state
                                     ],
                                   ),
                                 );
                               }
 
+                              // Retrieve messages from Firestore
                               final tradeMessages = snapshot.data!.data()
                                       as Map<String, dynamic>? ??
                                   {};
                               final messages = List<Map<String, dynamic>>.from(
                                   tradeMessages['messages'] ?? []);
 
-                              // Process messages
+                              // Process incoming messages
                               WidgetsBinding.instance.addPostFrameCallback((_) {
-                              //  _processMessages(messages);
-                              handleIncomingMessages(messages, 
-                              context, 
-                              recentAccountNumber, 
-                              recentPersonName, 
-                              recentBankName, 
-                              recentBankCode, 
-                              accountService, 
-                              _initializeTimer);
+                                handleIncomingMessages(
+                                  messages,
+                                  context,
+                                  recentAccountNumber,
+                                  recentPersonName,
+                                  recentBankName,
+                                  recentBankCode,
+                                  accountService,
+                                  _initializeTimer,
+                                );
                               });
 
                               return ListView.builder(
@@ -1265,8 +1274,7 @@ void handleIncomingMessages(
                           ),
                         ),
 
-
-                        
+                        // Message input and send button
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -1283,12 +1291,15 @@ void handleIncomingMessages(
                               SizedBox(width: 10),
                               FloatingActionButton(
                                 mini: true,
-                                onPressed: _sendMessage,
+                                onPressed:
+                                    _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),
                               ),
                             ],
                           ),
                         ),
+
+                        // Display response message after sending
                         if (_responseMessage.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -1328,13 +1339,11 @@ Widget _buildSellerChatDetailsUI(BuildContext context, String? personName,
     String? accountNumber, String? bankName, String amount) {
   return Column(
     children: [
-      //_buildHeaderContainer(context),
       SizedBox(height: 3.h),
       _buildDetailsContainer(context, personName ?? 'N/A',
           accountNumber ?? 'Typing...', bankName ?? 'Typing...', amount,
           isChatDetails: true),
       SizedBox(height: 7.h),
-      // _buildFooterButtons(context),
     ],
   );
 }
@@ -1368,7 +1377,7 @@ Widget _buildDetailsContainer(BuildContext context, String accountHolder,
             Divider(),
             _buildDetailRow('Bank Name:', bankName, 8.sp),
             Divider(),
-            _buildDetailRow('Amount:', formatNairas(amount), 18.sp),
+            _buildDetailRow('Amount:', formatNairas(amount), 8.sp),
           ],
         )),
   );
