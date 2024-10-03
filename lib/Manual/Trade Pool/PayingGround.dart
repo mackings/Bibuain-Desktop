@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:bdesktop/Manual/Api%20services/BankService.dart';
 import 'package:bdesktop/Manual/Api%20services/RatesService.dart';
 import 'package:bdesktop/Manual/Api%20services/TradeService.dart';
@@ -14,9 +15,6 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
-
-
-
 
 class Payment extends StatefulWidget {
   final String username;
@@ -35,7 +33,6 @@ class _PaymentState extends State<Payment> {
   String? lastTradeHash;
   dynamic fiatAmount;
   late String loggedInStaffID;
-
 
   String? recentAccountNumber;
   String? recentPersonName;
@@ -64,7 +61,7 @@ class _PaymentState extends State<Payment> {
     }
   }
 
-    Future<void> _markTradeAsCC(BuildContext context, String username) async {
+  Future<void> _markTradeAsCC(BuildContext context, String username) async {
     try {
       // int elapsedTime = _timerService!.getElapsedTime();
       //  print("Marking at >>>>>>>>>>>>> $elapsedTime");
@@ -81,6 +78,15 @@ class _PaymentState extends State<Payment> {
 
       if (response.statusCode == 200) {
         print(">>>>> Marked ${response.body}");
+      Future playSound() async {
+    final player = AudioPlayer();
+    await player.play(
+      UrlSource('http://soundbible.com/grab.php?id=2199&type=mp3'),
+    );
+    Timer(Duration(seconds: 1), () {
+      player.stop();
+    });
+  }
 
         //1   _timerService!.stop(resetTime: true);
 
@@ -180,11 +186,9 @@ class _PaymentState extends State<Payment> {
     };
   }
 
-
   String _formatDateTime(DateTime dateTime) {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
-
 
   void verifyAccountWithService(
       BuildContext context, AccountService accountService) async {
@@ -201,57 +205,54 @@ class _PaymentState extends State<Payment> {
     );
   }
 
+  Map<String, dynamic>? _checkForBankDetails(
+      List<Map<String, dynamic>> messages) {
+    String? accountNumber;
+    String? holderName;
+    String? bankName;
 
+    // Regex to find 10-digit account number
+    final accountNumberRegex = RegExp(r'\b\d{10}\b');
+    final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
 
+    for (var message in messages) {
+      final messageText = message['text'].toString();
 
-Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
-  String? accountNumber;
-  String? holderName;
-  String? bankName;
+      // Check for account number
+      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
+      if (accountNumberMatch != null) {
+        accountNumber = accountNumberMatch.group(0);
+      }
 
-  // Regex to find 10-digit account number
-  final accountNumberRegex = RegExp(r'\b\d{10}\b');
-  final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
+      // Check for name
+      final nameMatch = nameRegex.firstMatch(messageText);
+      if (nameMatch != null) {
+        holderName = nameMatch.group(0);
+      }
 
-  for (var message in messages) {
-    final messageText = message['text'].toString();
-    
-    // Check for account number
-    final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
-    if (accountNumberMatch != null) {
-      accountNumber = accountNumberMatch.group(0);
-    }
+      // Check for bank name using the bankCodes map
+      for (var bank in accountService.bankCodes.keys) {
+        if (messageText.toLowerCase().contains(bank.toLowerCase())) {
+          bankName = bank;
+          break;
+        }
+      }
 
-    // Check for name
-    final nameMatch = nameRegex.firstMatch(messageText);
-    if (nameMatch != null) {
-      holderName = nameMatch.group(0);
-    }
-
-    // Check for bank name using the bankCodes map
-    for (var bank in accountService.bankCodes.keys) {
-      if (messageText.toLowerCase().contains(bank.toLowerCase())) {
-        bankName = bank;
-        break;
+      // Once we have all details, return them
+      if (accountNumber != null && holderName != null && bankName != null) {
+        print(
+            'Bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+        return {
+          'account_number': accountNumber,
+          'holder_name': holderName,
+          'bank_name': bankName,
+        };
       }
     }
 
-    // Once we have all details, return them
-    if (accountNumber != null && holderName != null && bankName != null) {
-      print('Bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
-      return {
-        'account_number': accountNumber,
-        'holder_name': holderName,
-        'bank_name': bankName,
-      };
-    }
+    print('No valid bank details found.');
+    return null;
   }
-
-  print('No valid bank details found.');
-  return null;
-}
-
-
 
   void handleIncomingMessages(
     List<Map<String, dynamic>> messages,
@@ -261,7 +262,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     String? recentBankName,
     String? recentBankCode,
     AccountService accountService,
-    void Function() initializeTimer, 
+    void Function() initializeTimer,
   ) {
     accountService.processMessages(
       messages,
@@ -273,7 +274,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
       initializeTimer,
     );
   }
-
 
   Future<void> _markTradeAsPaid(BuildContext context, String username) async {
     int elapsedTime = _timerService!.getElapsedTime();
@@ -287,7 +287,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     );
   }
 
-
   void resetSelectedTrade() {
     setState(() {
       selectedTradeHash = null;
@@ -295,8 +294,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
   }
 
 //Complain
-
-
 
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
@@ -330,12 +327,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     });
   }
 
-  void startCountdown() {
-    countdownStartTime =
-        DateTime.now(); // Capture start time when countdown begins
-    print("Countdown started at: $countdownStartTime");
-  }
-
   void _startTimer() {
     Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted && remainingTime > 0) {
@@ -345,29 +336,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
       } else {
         timer.cancel();
       }
-    });
-  }
-
-  void _removeCurrentTrade() async {
-    String currentTradeHash = selectedTradeHash!;
-    DocumentReference staffRef =
-        FirebaseFirestore.instance.collection('staff').doc(loggedInStaffID);
-
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      DocumentSnapshot staffSnapshot = await transaction.get(staffRef);
-
-      if (staffSnapshot.exists) {
-        List<Map<String, dynamic>> assignedTrades =
-            List<Map<String, dynamic>>.from(
-                staffSnapshot['assignedTrades'] ?? []);
-        assignedTrades
-            .removeWhere((trade) => trade['trade_hash'] == currentTradeHash);
-        transaction.update(staffRef, {'assignedTrades': assignedTrades});
-      }
-    });
-
-    setState(() {
-      // _remainingTime = 60;
     });
   }
 
@@ -434,6 +402,16 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     }
   }
 
+  Future playSound() async {
+    final player = AudioPlayer();
+    await player.play(
+      UrlSource('http://soundbible.com/grab.php?id=882&type=mp3'),
+    );
+    Timer(Duration(seconds: 1), () {
+      player.stop();
+    });
+  }
+
   Future<void> _initializeTimer() async {
     int firestoreDuration = await _fetchDurationFromFirestore();
     print('Fetched duration: $firestoreDuration');
@@ -444,7 +422,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
       },
       duration: firestoreDuration,
       onComplete: () async {
-        await _markTradeAsPaid(context, widget.username);
+        // await _markTradeAsPaid(context, widget.username);
       },
     );
     print('_timerService initialized');
@@ -650,7 +628,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
         child: Row(
           children: [
 
-
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -706,13 +683,9 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                 },
               ),
             ),
-           
-           
             SizedBox(
               width: 4.w,
             ),
-
-
             Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
@@ -754,7 +727,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                       .toList();
 
                   if (unpaidTrades.isEmpty) {
-                    // Stop the timer when no unpaid trades exist
+                    // Stop the timer when no unpaid trades exists
                     _timerService?.stop();
                     Kickstop();
 
@@ -780,8 +753,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                         setState(() {
                           selectedTradeHash = latestTradeHash;
                         });
-
-                        // Start the timer when a new trade is assigned
                       }
                     });
                   }
@@ -794,21 +765,9 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                     builder: (context, tradeSnapshot) {
                       if (tradeSnapshot.connectionState ==
                           ConnectionState.waiting) {
+                        playSound();
                         return Center(child: CircularProgressIndicator());
                       }
-
-                      // if (!tradeSnapshot.hasData ||
-                      //     !tradeSnapshot.data!.exists) {
-                      //   if (autoMarkPaidTimer == null) {
-                      //     autoMarkPaidTimer =
-                      //         Timer(Duration(seconds: 10), () async {
-                      //       if (!tradeSnapshot.hasData ||
-                      //           !tradeSnapshot.data!.exists) {
-                      //         await _markTradeAsPaid(context, 'Auto');
-                      //       }
-                      //     });
-                      //   }
-                      // }
 
                       final tradeMessages =
                           tradeSnapshot.data!.data() as Map<String, dynamic>? ??
@@ -828,9 +787,10 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               padding: const EdgeInsets.all(8.0),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.blue,
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(width: 0.5),
+                                  border: Border.all(
+                                      width: 0.5, color: Colors.white),
                                 ),
                                 width: MediaQuery.of(context).size.width - 20,
                                 height: 70,
@@ -853,6 +813,9 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                             return GestureDetector(
                                               onTap: () {},
                                               child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                 children: [
                                                   Icon(
                                                     Icons.run_circle_sharp,
@@ -867,6 +830,36 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                                           FontWeight.w500,
                                                       color: Colors.black,
                                                     ),
+                                                  ),
+                                                  SizedBox(
+                                                    width: 23.w,
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        '${latestTrade['account']}',
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize: 9.sp,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: Colors.black,
+                                                        ),
+                                                      ),
+                                                      SizedBox(
+                                                        width: 5.w,
+                                                      ),
+                                                      Text(
+                                                        '${latestTrade['handle']}',
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize: 8.sp,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: Colors.black,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
@@ -885,26 +878,27 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                           if (bankDetails != null)
                             Column(
                               children: [
-    if (bankDetails != null)
-      _buildSellerDetailsUI(
-        context,
-        bankDetails['holder_name'] ?? 'N/A',
-        bankDetails['account_number'] ?? 'N/A',
-        bankDetails['bank_name'] ?? 'N/A',
-        latestTrade['fiat_amount_requested'] ?? 'N/A',
-      ),
+                                if (bankDetails != null)
+                                  _buildSellerDetailsUI(
+                                    context,
+                                    bankDetails['holder_name'] ?? 'N/A',
+                                    bankDetails['account_number'] ?? 'N/A',
+                                    bankDetails['bank_name'] ?? 'N/A',
+                                    latestTrade['fiat_amount_requested'] ??
+                                        'N/A',
+                                  ),
                               ],
                             )
                           else
                             Column(
                               children: [
-    _buildSellerChatDetailsUI(
-      context,
-      recentPersonName,
-      recentAccountNumber,
-      recentBankName,
-      latestTrade['fiat_amount_requested'] ?? 'N/A',
-    ),
+                                _buildSellerChatDetailsUI(
+                                  context,
+                                  recentPersonName,
+                                  recentAccountNumber,
+                                  recentBankName,
+                                  latestTrade['fiat_amount_requested'] ?? 'N/A',
+                                ),
                               ],
                             ),
                           Row(
@@ -953,9 +947,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                       return ConfirmPayDialog(
                                         onConfirm: () {
                                           _timerService!.stop();
-                                          print(
-                                              "Timer Stopped at >>>>>>>>> ${_timerService!._elapsedTime}");
-
                                           _tradeService.markTradeAsPaid(
                                             tradeHash:
                                                 selectedTradeHash.toString(),
@@ -1143,8 +1134,10 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               SizedBox(width: 10),
                               FloatingActionButton(
                                 mini: true,
-                                onPressed:(){},
-                                  //  _sendMessage, // Handle sending messages
+                                onPressed: () {
+                                  playSound();
+                                },
+                                //  _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),
                               ),
                             ],
@@ -1269,9 +1262,6 @@ Widget _buildFooterButtons(BuildContext context) {
             context: context,
             builder: (context) {
               return ConfirmPayDialog(onConfirm: () async {
-                // _MarkPaid();
-
-                // await _markTradeAsPaid(context);
                 Navigator.pop(context);
               }, onCancel: () {
                 Navigator.pop(context);
@@ -1486,8 +1476,6 @@ class TimerService {
         onComplete();
       }
     });
-
-    print("Timer started.");
   }
 
   // Stop the timer and reset it properly
@@ -1495,7 +1483,7 @@ class TimerService {
     if (_timer != null) {
       _timer!.cancel();
       _timer = null; // Ensure the timer is set to null after stopping
-      print("Timer stopped at $_elapsedTime seconds");
+      // print("Timer stopped at $_elapsedTime seconds");
     }
 
     if (resetTime) {
