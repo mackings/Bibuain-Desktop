@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
@@ -99,37 +101,42 @@ class AccountService {
   bool isVerified = false;
   Set<String> verifiedAccounts = {};
 
-  /// Function to verify account
-  Future<void> verifyAccount(
-    BuildContext context,
-    String recentAccountNumber,
-    String recentBankCode,
-    void Function() initializeTimer, // Pass in the timer initialization method
-  ) async {
-    if (verifiedAccounts.contains(recentAccountNumber)) {
-      print('Account $recentAccountNumber already verified');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$recentAccountNumber Has been Verified.',
-            style: GoogleFonts.poppins(),
-          ),
-          duration: const Duration(seconds: 5),
+
+/// Function to verify account
+Future<void> verifyAccount(
+  BuildContext context,
+  String recentAccountNumber,
+  String recentBankCode,
+  void Function() initializeTimer, // Pass in the timer initialization method
+) async {
+  // Check if the account is already verified
+  if (verifiedAccounts.contains(recentAccountNumber)) {
+    print('Account $recentAccountNumber already verified');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$recentAccountNumber Has been Verified.',
+          style: GoogleFonts.poppins(),
         ),
-      );
-      return;
-    }
+        duration: const Duration(seconds: 5),
+      ),
+    );
+    return;
+  }
 
-    final url = Uri.parse(
-        'https://server-eight-beige.vercel.app/api/wallet/generateBankDetails/$recentAccountNumber/$recentBankCode');
+  final url = Uri.parse(
+      'https://server-eight-beige.vercel.app/api/wallet/generateBankDetails/$recentAccountNumber/$recentBankCode');
 
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        initializeTimer(); // Call the timer initialization method
-        final data = json.decode(response.body);
-        final accountName = data['data']['account_name'];
-        print('Verified >>> : $data');
+  try {
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      initializeTimer(); // Call the timer initialization method
+      final data = json.decode(response.body);
+      final accountName = data['data']['account_name'];
+      print('Verified >>> : $data');
+
+      // Play sound only if it's the first time verification for this account
+      await playSound();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -141,17 +148,29 @@ class AccountService {
         ),
       );
 
-        verifiedAccounts.add(recentAccountNumber);
-        isVerified = true;
-      } else {
-        isVerified = false;
-        print('Error: ${response.statusCode}');
-      }
-    } catch (e) {
+      verifiedAccounts.add(recentAccountNumber); // Add account to the verified list
+      isVerified = true;
+    } else {
       isVerified = false;
-      print('Error: $e');
+      print('Error: ${response.statusCode}');
     }
+  } catch (e) {
+    isVerified = false;
+    print('Error: $e');
   }
+}
+
+/// Function to play sound
+Future playSound() async {
+  final player = AudioPlayer();
+  await player.play(
+    UrlSource('http://soundbible.com/grab.php?id=882&type=mp3'),
+  );
+  Timer(Duration(seconds: 1), () {
+    player.stop();
+  });
+}
+
 
   /// Function to process incoming messages and extract relevant account information
   
@@ -224,6 +243,8 @@ class AccountService {
         recentBankCode!,
         initializeTimer, // Pass the timer initialization method
       );
+
+
     }
   }
 

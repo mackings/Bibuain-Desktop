@@ -61,13 +61,20 @@ class _PaymentState extends State<Payment> {
     }
   }
 
+  Future TrashSound() async {
+    final player = AudioPlayer();
+    await player.play(
+      UrlSource('http://soundbible.com/grab.php?id=2199&type=mp3'),
+    );
+    Timer(Duration(seconds: 1), () {
+      player.stop();
+    });
+  }
+
   Future<void> _markTradeAsCC(BuildContext context, String username) async {
     try {
-      // int elapsedTime = _timerService!.getElapsedTime();
-      //  print("Marking at >>>>>>>>>>>>> $elapsedTime");
-
       final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': selectedTradeHash,
@@ -78,18 +85,6 @@ class _PaymentState extends State<Payment> {
 
       if (response.statusCode == 200) {
         print(">>>>> Marked ${response.body}");
-      Future playSound() async {
-    final player = AudioPlayer();
-    await player.play(
-      UrlSource('http://soundbible.com/grab.php?id=2199&type=mp3'),
-    );
-    Timer(Duration(seconds: 1), () {
-      player.stop();
-    });
-  }
-
-        //1   _timerService!.stop(resetTime: true);
-
         await FirebaseFirestore.instance
             .collection('staff')
             .doc(loggedInStaffID)
@@ -185,6 +180,7 @@ class _PaymentState extends State<Payment> {
       'averageSpeed': averageSpeed,
     };
   }
+
 
   String _formatDateTime(DateTime dateTime) {
     return DateFormat.yMMMd().add_jm().format(dateTime);
@@ -402,16 +398,6 @@ class _PaymentState extends State<Payment> {
     }
   }
 
-  Future playSound() async {
-    final player = AudioPlayer();
-    await player.play(
-      UrlSource('http://soundbible.com/grab.php?id=882&type=mp3'),
-    );
-    Timer(Duration(seconds: 1), () {
-      player.stop();
-    });
-  }
-
   Future<void> _initializeTimer() async {
     int firestoreDuration = await _fetchDurationFromFirestore();
     print('Fetched duration: $firestoreDuration');
@@ -627,7 +613,6 @@ class _PaymentState extends State<Payment> {
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
-
             Expanded(
               flex: 2,
               child: FutureBuilder<Map<String, dynamic>>(
@@ -765,7 +750,7 @@ class _PaymentState extends State<Payment> {
                     builder: (context, tradeSnapshot) {
                       if (tradeSnapshot.connectionState ==
                           ConnectionState.waiting) {
-                        playSound();
+                        // playSound();
                         return Center(child: CircularProgressIndicator());
                       }
 
@@ -939,6 +924,8 @@ class _PaymentState extends State<Payment> {
                                   ),
                                 ),
                               ),
+
+
                               GestureDetector(
                                 onTap: () {
                                   showDialog(
@@ -947,17 +934,38 @@ class _PaymentState extends State<Payment> {
                                       return ConfirmPayDialog(
                                         onConfirm: () {
                                           _timerService!.stop();
-                                          _tradeService.markTradeAsPaid(
-                                            tradeHash:
-                                                selectedTradeHash.toString(),
-                                            elapsedTime:
-                                                _timerService!._elapsedTime,
-                                            amountPaid: latestTrade[
-                                                'fiat_amount_requested'],
-                                            loggedInStaffID: loggedInStaffID,
-                                            resetSelectedTrade:
-                                                resetSelectedTrade,
-                                          );
+                                          if (latestTrade['account'] ==
+                                              'Paxful') {
+                                           _tradeService.markTradeAsPaid(
+                                              tradeHash:
+                                                  selectedTradeHash.toString(),
+                                              elapsedTime:
+                                                  _timerService!._elapsedTime,
+                                              amountPaid: latestTrade[
+                                                  'fiat_amount_requested'],
+                                              loggedInStaffID: loggedInStaffID,
+                                              resetSelectedTrade:
+                                                  resetSelectedTrade,
+                                            );
+
+                                            print("Paxful Account");
+
+                                          } else {
+
+                                            print("Noones Account");
+                                            
+                                            _tradeService.markTradeAsPaid(
+                                              tradeHash:
+                                                  selectedTradeHash.toString(),
+                                              elapsedTime:
+                                                  _timerService!._elapsedTime,
+                                              amountPaid: latestTrade[
+                                                  'fiat_amount_requested'],
+                                              loggedInStaffID: loggedInStaffID,
+                                              resetSelectedTrade:
+                                                  resetSelectedTrade,
+                                            );
+                                          }
 
                                           Navigator.pop(context);
                                         },
@@ -1039,6 +1047,8 @@ class _PaymentState extends State<Payment> {
 
                               // Process incoming messages
                               WidgetsBinding.instance.addPostFrameCallback((_) {
+                                // Sound
+                                // playSound();
                                 handleIncomingMessages(
                                   messages,
                                   context,
@@ -1135,7 +1145,7 @@ class _PaymentState extends State<Payment> {
                               FloatingActionButton(
                                 mini: true,
                                 onPressed: () {
-                                  playSound();
+                                  // playSound();
                                 },
                                 //  _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),

@@ -16,7 +16,7 @@ class TradeService {
       print("Marking trade with elapsed time >>>>>>>>>>>>> $elapsedTime");
 
       final response = await http.post(
-        Uri.parse('https://tester-1wva.onrender.com/trade/mark'),
+        Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'trade_hash': tradeHash,
@@ -28,8 +28,6 @@ class TradeService {
 
       if (response.statusCode == 200) {
         print("Trade marked as paid successfully: ${response.body}");
-
-        // Remove trade hash from the assigned trades of the staff
         await FirebaseFirestore.instance
             .collection('Allstaff')
             .doc(loggedInStaffID)
