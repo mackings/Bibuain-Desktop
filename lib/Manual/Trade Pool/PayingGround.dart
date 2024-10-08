@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
@@ -15,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
+
 
 class Payment extends StatefulWidget {
   final String username;
@@ -186,6 +188,7 @@ class _PaymentState extends State<Payment> {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
+
   void verifyAccountWithService(
       BuildContext context, AccountService accountService) async {
     if (recentAccountNumber == null || recentBankCode == null) {
@@ -201,26 +204,43 @@ class _PaymentState extends State<Payment> {
     );
   }
 
-  Map<String, dynamic>? _checkForBankDetails(
-      List<Map<String, dynamic>> messages) {
-    String? accountNumber;
-    String? holderName;
-    String? bankName;
+Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
+  String? accountNumber;
+  String? holderName;
+  String? bankName;
 
-    // Regex to find 10-digit account number
-    final accountNumberRegex = RegExp(r'\b\d{10}\b');
-    final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
+  // Regex to find a 10-digit account number
+  final accountNumberRegex = RegExp(r'\b\d{10}\b');
 
-    for (var message in messages) {
-      final messageText = message['text'].toString();
+  // Updated regex to match a name pattern (first and last name or full name with spaces)
+  final nameRegex = RegExp(r'\b[A-Za-z]{2,}\b(?:\s\b[A-Za-z]{2,}\b)+');
 
-      // Check for account number
+  for (var message in messages) {
+    final messageText = message['text'];
+
+    // Check if the message contains a structured bank account object
+    if (messageText is Map && messageText.containsKey('bank_account')) {
+      final bankAccount = messageText['bank_account'];
+      accountNumber = bankAccount['account_number'];
+      holderName = bankAccount['holder_name'];
+      bankName = bankAccount['bank_name'];
+      
+      if (accountNumber != null && holderName != null && bankName != null) {
+        print('Structured bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+        return {
+          'account_number': accountNumber,
+          'holder_name': holderName,
+          'bank_name': bankName,
+        };
+      }
+    } else if (messageText is String) {
+      // Check for account number in plain text
       final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
       if (accountNumberMatch != null) {
         accountNumber = accountNumberMatch.group(0);
       }
 
-      // Check for name
+      // Check for name in plain text
       final nameMatch = nameRegex.firstMatch(messageText);
       if (nameMatch != null) {
         holderName = nameMatch.group(0);
@@ -236,8 +256,7 @@ class _PaymentState extends State<Payment> {
 
       // Once we have all details, return them
       if (accountNumber != null && holderName != null && bankName != null) {
-        print(
-            'Bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+        print('Plain text bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
         return {
           'account_number': accountNumber,
           'holder_name': holderName,
@@ -245,10 +264,13 @@ class _PaymentState extends State<Payment> {
         };
       }
     }
-
-    print('No valid bank details found.');
-    return null;
   }
+
+  print('No valid bank details found.');
+  return null;
+}
+
+
 
   void handleIncomingMessages(
     List<Map<String, dynamic>> messages,
@@ -527,7 +549,7 @@ class _PaymentState extends State<Payment> {
       selectedTradeHash = null;
     });
     _rateService.calculatePrices(setState);
-  }
+ }
 
   void _listenToStaffChanges() {
     _staffSubscription = FirebaseFirestore.instance
@@ -953,7 +975,7 @@ class _PaymentState extends State<Payment> {
                                           } else {
 
                                             print("Noones Account");
-                                            
+
                                             _tradeService.markTradeAsPaid(
                                               tradeHash:
                                                   selectedTradeHash.toString(),
@@ -1268,6 +1290,7 @@ Widget _buildFooterButtons(BuildContext context) {
       ),
       GestureDetector(
         onTap: () {
+
           showDialog(
             context: context,
             builder: (context) {
@@ -1278,6 +1301,7 @@ Widget _buildFooterButtons(BuildContext context) {
               });
             },
           );
+
         },
         child: _buildFooterButton(
             context, "Mark Paid", Colors.white, Colors.black),
@@ -1454,6 +1478,10 @@ Widget _buildStatRow(String title, String value, double fontSize) {
     ],
   );
 }
+
+
+
+
 
 class TimerService {
   Timer? _timer;

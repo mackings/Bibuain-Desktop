@@ -164,78 +164,83 @@ Future<void> verifyAccount(
 Future playSound() async {
   final player = AudioPlayer();
   await player.play(
-    UrlSource('http://soundbible.com/grab.php?id=882&type=mp3'),
+    UrlSource('http://soundbible.com/grab.php?id=2156&type=mp3'),
   );
   Timer(Duration(seconds: 1), () {
     player.stop();
   });
 }
 
+void processMessages(
+  List<Map<String, dynamic>> messages,
+  BuildContext context,
+  String? recentAccountNumber,
+  String? recentPersonName,
+  String? recentBankName,
+  String? recentBankCode,
+  void Function() initializeTimer,
+) {
+  String? newAccountNumber;
+  String? newPersonName;
+  String? newBankName;
+  String? newBankCode;
 
-  /// Function to process incoming messages and extract relevant account information
-  
+  for (var message in messages) {
+    final messageText = message['text'].toString();
 
+    // Log the message content for debugging
+    print('Message being processed: $messageText');
 
-  void processMessages(
-    List<Map<String, dynamic>> messages,
-    BuildContext context,
-    String? recentAccountNumber,
-    String? recentPersonName,
-    String? recentBankName,
-    String? recentBankCode,
-    void Function() initializeTimer,
-  ) {
-    String? newAccountNumber;
-    String? newPersonName;
-    String? newBankName;
-    String? newBankCode;
+    // Regex to find 10-digit account number
+    final accountNumberRegex = RegExp(r'\b\d{10}\b');
+    final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
 
-    for (var message in messages) {
-      final messageText = message['text'].toString();
+    // Updated regex for names, avoiding short common words like "Alright"
+    final nameRegex = RegExp(r'\b[A-Z][a-z]{2,}\b(?:\s\b[A-Z][a-z]{2,}\b)?');
+    final nameMatch = nameRegex.firstMatch(messageText);
 
-      // Regex to find 10-digit account number
-      final accountNumberRegex = RegExp(r'\b\d{10}\b');
-      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
-      final nameRegex = RegExp(r'\b[A-Z][a-z]*\b(?:\s\b[A-Z][a-z]*\b)?');
-      final nameMatch = nameRegex.firstMatch(messageText);
-
-      // Find the bank name from the bankCodes map
-      String? bankNameMatch;
-      for (var bankName in bankCodes.keys) {
-        if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
-          bankNameMatch = bankName;
-          newBankCode = bankCodes[bankName];
-          break;
-        }
-      }
-
-      if (accountNumberMatch != null) {
-        newAccountNumber = accountNumberMatch.group(0);
-      }
-      if (nameMatch != null) {
-        newPersonName = nameMatch.group(0);
-      }
-      if (bankNameMatch != null) {
-        newBankName = bankNameMatch;
+    // Find the bank name from the bankCodes map
+    String? bankNameMatch;
+    for (var bankName in bankCodes.keys) {
+      if (messageText.toLowerCase().contains(bankName.toLowerCase())) {
+        bankNameMatch = bankName;
+        newBankCode = bankCodes[bankName];
+        break;
       }
     }
 
-    // If any changes in account number, person name, bank name, or bank code, update the state and verify account
-    if (newAccountNumber != recentAccountNumber ||
-        newPersonName != recentPersonName ||
-        newBankName != recentBankName ||
-        newBankCode != recentBankCode) {
-          
-      recentAccountNumber = newAccountNumber;
-      recentPersonName = newPersonName;
-      recentBankName = newBankName;
-      recentBankCode = newBankCode;
+    if (accountNumberMatch != null) {
+      newAccountNumber = accountNumberMatch.group(0);
+      print("Account number found: $newAccountNumber");
+    } else {
+      print("No account number found in message: $messageText");
+    }
+    if (nameMatch != null) {
+      newPersonName = nameMatch.group(0);
+    }
+    if (bankNameMatch != null) {
+      newBankName = bankNameMatch;
+    }
+  }
 
-      print("Name: >> $recentPersonName");
-      print('Account Nos: >>> $recentAccountNumber');
-      print('Bank: >>>> $recentBankName');
-      print('Bank Code: >>>> $recentBankCode');
+  // If there are changes in account number, person name, bank name, or bank code
+  if (newAccountNumber != null && newAccountNumber != recentAccountNumber ||
+      newPersonName != recentPersonName ||
+      newBankName != recentBankName ||
+      newBankCode != recentBankCode) {
+    
+    recentAccountNumber = newAccountNumber;
+    recentPersonName = newPersonName;
+    recentBankName = newBankName;
+    recentBankCode = newBankCode;
 
+    print("Name: >> $recentPersonName");
+    print('Account Nos: >>> $recentAccountNumber');
+    print('Bank: >>>> $recentBankName');
+    print('Bank Code: >>>> $recentBankCode');
+
+    // Ensure that newAccountNumber and newBankCode are not null
+    if (recentAccountNumber != null && recentBankCode != null) {
       // Call the account verification function
       verifyAccount(
         context,
@@ -243,10 +248,10 @@ Future playSound() async {
         recentBankCode!,
         initializeTimer, // Pass the timer initialization method
       );
-
-
+    } else {
+      print('Error: Account number or bank code is missing!');
     }
   }
-
+}
 
 }

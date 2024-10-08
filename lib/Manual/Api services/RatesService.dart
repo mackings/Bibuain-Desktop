@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 class RateService {
   // Fetch Paxful Rates
   Future<int?> fetchPaxfulRates() async {
+    
     const String url = 'https://tester-1wva.onrender.com/paxful/paxful/rates';
     try {
       // Make the POST request

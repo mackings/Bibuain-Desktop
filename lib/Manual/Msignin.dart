@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:bdesktop/Admin/adminhome.dart';
+import 'package:bdesktop/HR/dashboard.dart';
 import 'package:bdesktop/Manual/Msignup.dart';
 import 'package:bdesktop/Manual/Trade%20Pool/PayingGround.dart';
 import 'package:bdesktop/Trainer/payers.dart';
@@ -21,23 +22,24 @@ class Msignin extends StatefulWidget {
 
 class MsigninState extends State<Msignin> {
 
-
-
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
 // Method to save username and token to preferences
-Future<void> _saveToPrefs(String username, String token) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString('username', username);
-  await prefs.setString('token', token); // Save the token as well
-}
+
+  Future<void> _saveToPrefs(String username, String token) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
+    await prefs.setString('token', token); 
+  }
+
+
 
 Future<void> _checkAndProceed(BuildContext context) async {
   String username = _usernameController.text.trim();
-  String password = _passwordController.text.trim(); // Get the password
+  String password = _passwordController.text.trim(); 
 
   if (username.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -76,23 +78,49 @@ Future<void> _checkAndProceed(BuildContext context) async {
 
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
+      print(data);
 
       // Check if success is true
       if (data['success'] == true) {
-        String token = data['data']['token']; // Access the token from the nested data
+        String token = data['data']['token']; // Access the token
+        String role = data['data']['user']['role']; // Access the role
+        String userName = data['data']['user']['username']; // Access the username
 
         // Save the username and token to preferences
         await _saveToPrefs(username, token);
 
-        // Navigate to the Payment page
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Payment(username: username),
-          ),
-        );
+        // Navigate to different pages based on role
+        if (role == 'HR') {
+          
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HR(username: userName), // Navigate to HR dashboard
+            ),
+          );
+        } else if (role == 'Admin') {
+
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => AdminDashboard(username: userName), // Navigate to Admin dashboard
+          //   ),
+          // );
+
+        } else {
+
+          // For any other roles, navigate to a default page
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Payment(username: userName), 
+            ),
+          );
+
+        }
       } else {
-        // Handle login failure (message will be in the response)
+        // Handle login failure
         String errorMessage = data['message'] ?? 'Login failed'; // Default error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -115,6 +143,8 @@ Future<void> _checkAndProceed(BuildContext context) async {
     });
   }
 }
+
+
 
 
   @override
@@ -216,12 +246,12 @@ Future<void> _checkAndProceed(BuildContext context) async {
                           ),
 
                     // New User? Sign Up text
-                    SizedBox(height: 1.h), 
+                    SizedBox(height: 1.h),
                     RichText(
                       text: TextSpan(
                         style: GoogleFonts.poppins(
-                          fontSize: 6.sp, 
-                          color: Colors.black, 
+                          fontSize: 6.sp,
+                          color: Colors.black,
                         ),
                         children: [
                           TextSpan(text: 'New Payer? '), // Regular text
