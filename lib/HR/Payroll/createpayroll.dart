@@ -113,6 +113,7 @@ class _CreatepayrollState extends State<Createpayroll> {
 
   // Fetch staff names and update the loading state
   Future<void> fetchStaffNames() async {
+ 
     final response = await http.get(
       Uri.parse('https://b-backend-xe8q.onrender.com/staffs'),
     );
@@ -135,10 +136,9 @@ class _CreatepayrollState extends State<Createpayroll> {
 bool isSubmitting = false; // Track the submission/loading state
 
 void _showCreatePayrollDialog() async {
-  // Call fetch function to load staff names before showing the dialog
-  await fetchStaffNames(); // Ensure names are fetched first
 
-  // After names are fetched, show the dialog
+  await fetchStaffNames(); 
+
   showDialog(
     context: context,
     builder: (context) {
@@ -254,7 +254,7 @@ void _showCreatePayrollDialog() async {
                                   isSubmitting = false; // Stop loading
                                 });
                               }
-                            }
+                            }  
                           },
                     child: isSubmitting
                         ? CircularProgressIndicator(
@@ -276,6 +276,8 @@ void _showCreatePayrollDialog() async {
     },
   );
 }
+
+
  final NumberFormat currencyFormatter =  NumberFormat("#,##0", "en_US");
 
   @override
@@ -357,7 +359,7 @@ Expanded(
       ),
 
 
-      
+
       Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20),
@@ -666,12 +668,38 @@ Expanded(
 
 
                 ]),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Color(0xFF030832),
-        mini: false,
-        child: Icon(Icons.create, color: Colors.white),
-        onPressed: _showCreatePayrollDialog,
-      ),
+   floatingActionButton: FloatingActionButton(
+  backgroundColor: Color(0xFF030832),
+  mini: false,
+  child: isLoadingStaffNames ? Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: CircularProgressIndicator(color: Colors.white,),
+  ) : Icon(Icons.create, color: Colors.white),
+  onPressed: () async {
+    setState(() {
+      isLoadingStaffNames = true; // Start loading when button is clicked
+    });
+
+    try {
+      // Fetch staff names and then show the dialog
+      await fetchStaffNames();
+      _showCreatePayrollDialog(); // Show the dialog only after the staff names are loaded
+    } catch (e) {
+      print("Error fetching staff names: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to load staff names"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isLoadingStaffNames = false; // Stop loading after names are fetched
+      });
+    }
+  },
+)
+
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:bdesktop/HR/Apiservice.dart';
 import 'package:bdesktop/HR/Payroll/createpayroll.dart';
+import 'package:bdesktop/HR/Query/queryhome.dart';
 import 'package:bdesktop/HR/models/staffmodel.dart';
 import 'package:bdesktop/HR/widgets/activewidgets.dart';
 import 'package:bdesktop/HR/widgets/widget.dart';
@@ -112,7 +113,14 @@ class _HRState extends State<HR> {
                         iconData: Icons.chat_sharp,
                         color: Color(0xFFFEA500),
                         bcolor: Color(0xFFFFEAD0),
-                        onTap: () {},
+                        onTap: () {
+
+                         Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => Queryhome())
+                           );
+                        },
                       ),
                       DashboardCard(
                         title: "Query",
