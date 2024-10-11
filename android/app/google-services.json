@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "951703786122",
-    "project_id": "fir-13e5a",
-    "storage_bucket": "fir-13e5a.appspot.com"
+    "project_number": "1044761303456",
+    "project_id": "bibuain-de956",
+    "storage_bucket": "bibuain-de956.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:951703786122:android:0d589989a474c189a91373",
+        "mobilesdk_app_id": "1:1044761303456:android:63cabad3490953d1042cc5",
         "android_client_info": {
           "package_name": "com.example.bdesktop"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1044761303456-pikkjde0gls5g63ojotvc7k2i4k6ff2e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDkzhggeIAaVm9XZM9GssHD0Z2R0YyfpT4"
+          "current_key": "AIzaSyDrsN002y0Q2MOIX4ojVfW7aQLV9OAcyjw"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1044761303456-pikkjde0gls5g63ojotvc7k2i4k6ff2e.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1044761303456-7ohcknsb4ke5satvqrq6e45lnt0dib0n.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.bdesktop"
+              }
+            }
+          ]
         }
       }
     }

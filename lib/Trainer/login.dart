@@ -12,171 +12,103 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+
   final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  bool _isPasswordVisible = false;  // For toggling password visibility
+  bool _isLoading = false;  // For showing loading indicator
 
   Future<void> _saveUsernameToPrefs(String username) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('username', username);
   }
 
-Future<void> _checkAndProceed(BuildContext context) async {
+Future<void> _loginUser(BuildContext context) async {
   String username = _usernameController.text.trim();
+  String password = _passwordController.text.trim();
 
-  if (username.isEmpty) {
+  if (username.isEmpty || password.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please enter a username')),
+      SnackBar(content: Text('Please enter both username and password')),
     );
     return;
   }
 
+  setState(() {
+    _isLoading = true;  // Start loading
+  });
+
   try {
-    // If username is Admin123 and platform is desktop
-    if (username == 'Admin123' && Platform.isWindows) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AdminHome()  // Redirect to the AdminPage
-        ),
+    DocumentSnapshot staffDoc = await _firestore.collection('Traineestaff').doc(username).get();
+
+    if (staffDoc.exists && staffDoc['password'] == password) {
+      await _saveUsernameToPrefs(username);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logged in successfully')),
       );
-      return;
-    }
 
-    // Check if username exists in Firestore
-    DocumentSnapshot staffDoc = await _firestore.collection('staff').doc(username).get();
-    
-    if (staffDoc.exists) {
-      await _saveUsernameToPrefs(username);  // Save username
+      String role = staffDoc['role'];  // Get the user's role
 
-//Main
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (context) => Payers(username: username),
-        //   ),
-        // );
-
-
-      // Navigate based on platform
-      
-      if (Platform.isWindows) {
+      if (role == 'HR') {
+        // Navigate to HR-specific page
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => Payers(username: username),
+            builder: (context) => AdminHome(),  // Replace HRPage with the actual HR page widget
           ),
         );
-      } else if (Platform.isAndroid) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Apphome(username: username),
-          ),
-        );
+      } else {
+        // Default behavior based on platform
+        if (Platform.isWindows) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Payers(username: username),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Apphome(username: username),
+            ),
+          );
+        }
       }
-
     } else {
-      bool success = await _addStaff(username);
-      
-      if (success) {
-        await _saveUsernameToPrefs(username);  // Save username
-
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Payers(username: username),
-          ),
-        );
-
-        
-        // Navigate based on platform
-        // if (Platform.isWindows) {
-        //   Navigator.push(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder: (context) => Payers(username: username),
-        //     ),
-        //   );
-        // } else if (Platform.isAndroid) {
-
-        //   Navigator.push(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder: (context) => Apphome(username: username),
-        //     ),
-        //   );
-
-
-        // }else{
-
-        //  Navigator.push(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder: (context) => Apphome(username: username),
-        //     ),
-        //   );
-
-        // }
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid username or password')),
+      );
     }
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('An error occurred: $e')),
     );
+  } finally {
+    setState(() {
+      _isLoading = false;  // Stop loading
+    });
   }
 }
 
-
-  Future<bool> _addStaff(String username) async {
-    final String url = 'https://tester-1wva.onrender.com/paxful/addstaff'; // API URL
-
-    final Map<String, dynamic> requestBody = {
-      "staffId": username,
-      "staffDetails": {
-        "name": username, 
-        "email": "example@example.com", 
-        "role": "Payer", 
-      }
-    };
-
-    try {
-      var response = await http.post(
-        Uri.parse(url),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode(requestBody),
-      );
-      
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        print('Failed to add staff: ${response.statusCode} - ${response.body}');
-        return false;
-      }
-    } catch (e) {
-      print('Error adding staff: $e');
-      return false;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Sizer(
       builder: (context, orientation, deviceType) {
         return Scaffold(
+          appBar: AppBar(),
           backgroundColor: Colors.white,
           body: Stack(
             children: [
-              // Background bubbles (if needed for design purposes)
               Positioned.fill(
                 child: Stack(
                   children: List.generate(5, (index) => Bubble(
@@ -186,14 +118,12 @@ Future<void> _checkAndProceed(BuildContext context) async {
                   )),
                 ),
               ),
-              // Main content
-              
               Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Trainer App",
+                      "Trainer App.",
                       style: GoogleFonts.poppins(
                         fontSize: 25.sp,
                         fontWeight: FontWeight.w600,
@@ -216,26 +146,65 @@ Future<void> _checkAndProceed(BuildContext context) async {
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
-
+                    SizedBox(height: 2.h),
                     Container(
                       width: 60.w,
-                      height: 4.h,
-                      child: ElevatedButton(
-                        onPressed: () => _checkAndProceed(context),
-                        child: Text(
-                          'Start',
-                          style: GoogleFonts.poppins(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          border: InputBorder.none,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
                           ),
                         ),
                       ),
                     ),
- 
+                    SizedBox(height: 20),
+                    Column(
+                      children: [
+                        Container(
+                          width: 60.w,
+                          height: 4.h,
+                          child: ElevatedButton(
+                            onPressed: _isLoading
+                                ? null  // Disable button when loading
+                                : () => _loginUser(context),
+                            child: _isLoading
+                                ? CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : Text(
+                                    'Sign In',
+                                    style: GoogleFonts.poppins(color: Colors.white),
+                                  ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -246,3 +215,4 @@ Future<void> _checkAndProceed(BuildContext context) async {
     );
   }
 }
+

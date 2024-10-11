@@ -1,4 +1,5 @@
 import 'package:bdesktop/Manual/Msignin.dart';
+import 'package:bdesktop/Trainer/Register.dart';
 import 'package:bdesktop/firebase_options.dart';
 import 'package:bdesktop/home.dart';
 import 'package:bdesktop/Trainer/login.dart';
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: LoginPage()
+        home: RegisterPage(),
         );
   }
 }

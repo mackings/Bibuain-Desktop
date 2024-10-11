@@ -413,7 +413,7 @@ class _ApphomeState extends State<Apphome> {
 
       // Apply all filter conditions
       if (transaction['name'] == 'No Name' ||
-          transaction['amountPaid'] == '0' || 
+          transaction['amountPaid'] == '0' ||  
           transaction['amountPaid'] == 'Pending' ||
           (transaction['markedAt'] == 'Automatic' || 
            transaction['markedAt'] == 'Pending' || 
@@ -439,7 +439,7 @@ class _ApphomeState extends State<Apphome> {
               ),
             ),
           ],
-        ),
+        ), 
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

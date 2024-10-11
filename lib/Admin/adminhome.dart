@@ -303,7 +303,7 @@ Future<void> _showAssignDialog() async {
 
   Future<List<String>> _fetchStaffIds() async {
     final firestore = FirebaseFirestore.instance;
-    final snapshot = await firestore.collection('staff').get();
+    final snapshot = await firestore.collection('Traineestaff').get();
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 

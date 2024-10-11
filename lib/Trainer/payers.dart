@@ -507,18 +507,18 @@ class _PayersState extends State<Payers> {
         //1   _timerService!.stop(resetTime: true);
 
         await FirebaseFirestore.instance
-            .collection('staff')
+            .collection('Traineestaff')
             .doc(loggedInStaffID)
             .update({
           'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
         });
 
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .doc(selectedTradeHash)
-            .update({
-          'isPaid': true,
-        });
+        // await FirebaseFirestore.instance
+        //     .collection('trades')
+        //     .doc(selectedTradeHash)
+        //     .update({
+        //   'isPaid': true,
+        // });
 
         // Reset UI elements and start listening for new trades
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -674,7 +674,7 @@ Future<Map<String, dynamic>> getTradeStats() async {
 
   // Fetch staff document from Firestore
   DocumentSnapshot staffDoc = await FirebaseFirestore.instance
-      .collection('staff')
+      .collection('Traineestaff')
       .doc(widget.username)
       .get();
 
@@ -1115,6 +1115,7 @@ Future<Map<String, dynamic>> getTradeStats() async {
         child: Row(
           children: [
 
+
 Expanded(
   flex: 2,
   child: FutureBuilder<Map<String, dynamic>>(
@@ -1136,13 +1137,16 @@ Expanded(
           children: [
             Row(
               children: [
+
                 Text(
                   "Hello,",
                   style: GoogleFonts.poppins(
                       fontSize: 10.sp, fontWeight: FontWeight.w500),
                 ),
+
                 SizedBox(width: 1.w),
                 Text(widget.username),
+
               ],
             ),
             SizedBox(height: 2.h),
@@ -1169,7 +1173,6 @@ Expanded(
 ),
 
            
-           
             SizedBox(
               width: 4.w,
             ),
@@ -1179,7 +1182,7 @@ Expanded(
               flex: 4,
               child: StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('staff')
+                    .collection('Traineestaff')
                     .doc(loggedInStaffID)
                     .snapshots(),
                 builder: (context, staffSnapshot) {
@@ -1465,7 +1468,7 @@ Expanded(
                           child: StreamBuilder<DocumentSnapshot>(
                             key: ValueKey(selectedTradeHash),
                             stream: FirebaseFirestore.instance
-                                .collection('tradeMessages')
+                                .collection('manualmessages')
                                 .doc(selectedTradeHash)
                                 .snapshots(),
                             builder: (context, snapshot) {
@@ -1561,6 +1564,7 @@ Expanded(
                             },
                           ),
                         ),
+
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -1604,6 +1608,8 @@ Expanded(
     );
   }
 }
+
+
 
 Widget _buildSellerDetailsUI(BuildContext context, String accountHolder,
     String accountNumber, String bankName, String amount) {
