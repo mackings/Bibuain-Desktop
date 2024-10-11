@@ -5,6 +5,7 @@ import 'package:bdesktop/HR/models/staffmodel.dart';
 import 'package:bdesktop/HR/widgets/activewidgets.dart';
 import 'package:bdesktop/HR/widgets/widget.dart';
 import 'package:bdesktop/Manual/Api%20services/clockinApi.dart';
+import 'package:bdesktop/Performance/views/performanced.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -82,11 +83,17 @@ class _HRState extends State<HR> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       DashboardCard(
-                        title: "Modify Staff",
-                        iconData: Icons.person_4_outlined,
+                        title: "Team Performance",
+                        iconData: Icons.bar_chart,
                         color: Colors.purple,
                         bcolor: Color(0xFFD9D9D9),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => Performancedashboard())
+                           );
+                        },
                       ),
                       DashboardCard(
                         title: "All Staffs",
@@ -146,6 +153,8 @@ class _HRState extends State<HR> {
                           ),
                         ),
                         SizedBox(width: 20),
+
+                        
                         Expanded(
                           flex: 2,
                           child: Padding(

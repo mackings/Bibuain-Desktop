@@ -23,7 +23,7 @@ class _CreatepayrollState extends State<Createpayroll> {
   bool isLoading = true;
   String errorMessage = '';
   List<String> staffNames = [];
-  bool isLoadingStaffNames = true;
+  bool isLoadingStaffNames = false;
 
   @override
   void initState() {
