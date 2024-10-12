@@ -436,7 +436,7 @@ Expanded(
                               ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text('Incentives',
+                                child: Text('Incentive',
                                     style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                               Padding(

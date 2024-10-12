@@ -1,3 +1,4 @@
+import 'package:bdesktop/Configuration/View/Configdashboard.dart';
 import 'package:bdesktop/HR/Apiservice.dart';
 import 'package:bdesktop/HR/Payroll/createpayroll.dart';
 import 'package:bdesktop/HR/Query/queryhome.dart';
@@ -130,11 +131,17 @@ class _HRState extends State<HR> {
                         },
                       ),
                       DashboardCard(
-                        title: "Query",
+                        title: "Configurations",
                         iconData: Icons.report_problem_outlined,
                         color: Color(0xFF2B7D05),
                         bcolor: Color(0xFFC0FFC2),
-                        onTap: () {},
+                        onTap: () {
+                             Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => Configdashboard())
+                           );
+                        },
                       ),
                     ],
                   ),
