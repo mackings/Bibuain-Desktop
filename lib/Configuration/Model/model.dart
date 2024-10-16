@@ -26,13 +26,24 @@ class Offer {
     required this.offerOwnerUsername,
   });
 
+  // Helper function to handle both int and double types
+  static double _toDouble(dynamic value) {
+    if (value is int) {
+      return value.toDouble(); // Convert int to double if necessary
+    } else if (value is double) {
+      return value;
+    } else {
+      throw Exception('Invalid type for a double: ${value.runtimeType}');
+    }
+  }
+
   factory Offer.fromJson(Map<String, dynamic> json) {
     return Offer(
       offerHash: json['offer_hash'],
       offerType: json['offer_type'],
-      fiatPricePerBtc: json['fiat_price_per_btc'],
-      fiatUsdPricePerBtc: json['fiat_USD_price_per_btc'],
-      margin: json['margin'],
+      fiatPricePerBtc: _toDouble(json['fiat_price_per_btc']),
+      fiatUsdPricePerBtc: _toDouble(json['fiat_USD_price_per_btc']),
+      margin: _toDouble(json['margin']),
       active: json['active'],
       fiatAmountRangeMin: json['fiat_amount_range_min'],
       fiatAmountRangeMax: json['fiat_amount_range_max'],
