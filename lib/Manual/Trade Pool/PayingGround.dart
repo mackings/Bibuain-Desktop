@@ -540,7 +540,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
   void initState() {
     super.initState();
     _loadToken();
-    _showClockInDialog();
+   // _showClockInDialog();
     _fetchDurationFromFirestore();
     selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
@@ -635,61 +635,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
         padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
         child: Row(
           children: [
-            Expanded(
-              flex: 2,
-              child: FutureBuilder<Map<String, dynamic>>(
-                future: getTradeStats(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    final int totalTrades = snapshot.data!['totalTrades'];
-                    final int tradesMarkedAutomatic =
-                        snapshot.data!['tradesMarkedAutomatic'];
-                    final int tradesMarkedWithNumbers =
-                        snapshot.data!['tradesMarkedWithNumbers'];
-                    final int tradesMarkedInvalid = snapshot.data![
-                        'tradesMarkedInvalid']; // Retrieve invalid trades
-                    final double averageSpeed = snapshot.data!['averageSpeed'];
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              "Hello,",
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10.sp, fontWeight: FontWeight.w500),
-                            ),
-                            SizedBox(width: 1.w),
-                            Text(widget.username),
-                          ],
-                        ),
-                        SizedBox(height: 2.h),
-                        Container(
-                          child: Padding(
-                            padding: const EdgeInsets.all(15.0),
-                            child: _buildTradeStatsContainer(
-                              context,
-                              totalTrades,
-                              tradesMarkedAutomatic,
-                              tradesMarkedWithNumbers,
-                              tradesMarkedInvalid, // Pass invalid trades to the container
-                              averageSpeed,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    return Text('No data available');
-                  }
-                },
-              ),
-            ),
+               
             SizedBox(
               width: 4.w,
             ),

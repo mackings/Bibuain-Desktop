@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
-import 'package:bdesktop/Admin/adminhome.dart';
 import 'package:bdesktop/HR/dashboard.dart';
+
+import 'package:bdesktop/Manual/Dashboard/HomeScreen.dart';
 import 'package:bdesktop/Manual/Msignup.dart';
-import 'package:bdesktop/Manual/Trade%20Pool/PayingGround.dart';
-import 'package:bdesktop/Trainer/payers.dart';
 import 'package:bdesktop/widgets/bubble.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -29,11 +27,13 @@ class MsigninState extends State<Msignin> {
   bool _isLoading = false;
 // Method to save username and token to preferences
 
-  Future<void> _saveToPrefs(String username, String token) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', username);
-    await prefs.setString('token', token); 
-  }
+Future<void> _saveToPrefs(String username, String token) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.remove('username');
+  await prefs.setString('username', username);
+  await prefs.setString('token', token);
+}
+
 
 
 
@@ -87,7 +87,7 @@ Future<void> _checkAndProceed(BuildContext context) async {
         String userName = data['data']['user']['username']; // Access the username
 
         // Save the username and token to preferences
-        await _saveToPrefs(username, token);
+        await _saveToPrefs(userName, token);
 
         // Navigate to different pages based on role
         if (role == 'HR') {
@@ -111,10 +111,17 @@ Future<void> _checkAndProceed(BuildContext context) async {
 
           // For any other roles, navigate to a default page
 
-          Navigator.push(
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => Payment(username: userName), 
+          //   ),
+          // );
+
+         Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => Payment(username: userName), 
+              builder: (context) => PayersHomeScreen(username: username)
             ),
           );
 
