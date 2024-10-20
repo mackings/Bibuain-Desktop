@@ -311,8 +311,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     });
   }
 
-//Complain
-
   ValueNotifier<String?> currentTradeNotifier = ValueNotifier<String?>(null);
   void _onCountdownComplete() {
     currentTradeNotifier.value = null;
@@ -469,72 +467,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     setState(() {});
   }
 
-  Future<void> _showClockInDialog() async {
-    // Fetch the token from SharedPreferences
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token'); // Assuming you saved the token
-
-    if (token == null) {
-      // Handle case where the token is not found
-      return;
-    }
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent dismissing the dialog
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            'Starting Shift',
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-          ),
-          content: Text(
-            'Are you ready to Start your Shift?',
-            style: GoogleFonts.montserrat(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Map<String, dynamic> response =
-                    await ApiService().clockIn(token);
-                if (response['success'] == true) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                      'Clock in successful!',
-                      style: GoogleFonts.montserrat(),
-                    )),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                      'Clock in failed: ${response['message']}',
-                      style: GoogleFonts.montserrat(),
-                    )),
-                  );
-                }
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text(
-                'Yes',
-                style: GoogleFonts.montserrat(),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'No',
-                style: GoogleFonts.montserrat(),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   void initState() {
@@ -603,36 +535,10 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        actions: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedTradeHash = null;
-              });
-
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => LoginPage()));
-            },
-            child: Container(
-              height: 40,
-              width: 90,
-              decoration: BoxDecoration(
-                  color: Colors.black, borderRadius: BorderRadius.circular(10)),
-              child: Center(
-                  child: Text(
-                'Sign Out',
-                style: GoogleFonts.montserrat(
-                    fontWeight: FontWeight.w400, color: Colors.white),
-              )),
-            ),
-          ),
-          SizedBox(
-            width: 20,
-          )
-        ],
       ),
+
       body: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 70),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
         child: Row(
           children: [
                
@@ -687,10 +593,12 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                     return Align(
                       alignment: Alignment.center,
                       child: Padding(
-                        padding: const EdgeInsets.only(left: 150),
+                        padding: const EdgeInsets.only(left: 350),
                         child: Text(
                           'No Assigned Trade Yet.',
-                          style: GoogleFonts.montserrat(),
+                          style: GoogleFonts.montserrat(
+                            fontSize: 8.sp
+                          ),
                         ),
                       ),
                     );
@@ -971,6 +879,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
               ),
             ),
             SizedBox(width: 20),
+
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -1030,67 +939,55 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               });
 
                               return ListView.builder(
-                                itemCount: messages.length,
-                                itemBuilder: (context, index) {
-                                  final message = messages[index];
-                                  final messageTime = _formatDateTime(
-                                      _convertToDateTime(message['timestamp']));
-                                  final messageAuthor = message['author'];
-                                  final isMine = [
-                                    '2minmax_pro',
-                                    'Turbopay',
-                                    '2minutepay'
-                                  ].contains(messageAuthor);
+  itemCount: messages.length,
+  itemBuilder: (context, index) {
+    final message = messages[index];
+    final messageTime = _formatDateTime(
+        _convertToDateTime(message['timestamp'])); // Assuming this gives you the formatted time.
+    final messageAuthor = message['author'];
+    final isMine = [
+      '2minmax_pro',
+      'Turbopay',
+      '2minutepay'
+    ].contains(messageAuthor);
 
-                                  String messageText;
-                                  if (message['text'] is Map<String, dynamic> &&
-                                      message['text']
-                                          .containsKey('bank_account')) {
-                                    final bankAccount =
-                                        message['text']['bank_account'];
-                                    final name = bankAccount['holder_name'];
-                                    final amount = bankAccount['amount'];
-                                    final bank = bankAccount['bank_name'];
-                                    messageText =
-                                        'Name: $name\nAmount: $amount\nBank: $bank';
-                                  } else {
-                                    messageText = message['text'].toString();
-                                  }
+    String messageText;
+    if (message['text'] is Map<String, dynamic> &&
+        message['text'].containsKey('bank_account')) {
+      final bankAccount = message['text']['bank_account'];
+      final name = bankAccount['holder_name'];
+      final amount = bankAccount['amount'];
+      final bank = bankAccount['bank_name'];
+      messageText = 'Name: $name\nAmount: $amount\nBank: $bank';
+    } else {
+      messageText = message['text'].toString();
+    }
 
-                                  return Align(
-                                    alignment: isMine
-                                        ? Alignment.centerRight
-                                        : Alignment.centerLeft,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: isMine
-                                            ? Colors.blue[400]
-                                            : Colors.grey[300],
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: EdgeInsets.all(10),
-                                      margin: EdgeInsets.symmetric(
-                                          vertical: 5, horizontal: 10),
-                                      child: Column(
-                                        crossAxisAlignment: isMine
-                                            ? CrossAxisAlignment.end
-                                            : CrossAxisAlignment.start,
-                                        children: [
-                                          Text(messageText,
-                                              style: GoogleFonts.poppins()),
-                                          SizedBox(height: 5),
-                                          Text(
-                                            messageTime,
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isMine ? Colors.blue[400] : Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: EdgeInsets.all(10),
+        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        child: Column(
+          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(messageText, style: GoogleFonts.poppins()),
+            SizedBox(height: 5),
+            Text(
+              messageTime, // This should show the message's timestamp
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+);
+
                             },
                           ),
                         ),
@@ -1113,7 +1010,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               FloatingActionButton(
                                 mini: true,
                                 onPressed: () {
-                                  // playSound();
                                 },
                                 //  _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),
@@ -1200,7 +1096,7 @@ Widget _buildDetailsContainer(BuildContext context, String accountHolder,
             Divider(),
             _buildDetailRow('Bank Name:', bankName, 8.sp),
             Divider(),
-            _buildDetailRow('Amount:', formatNairas(amount), 8.sp),
+            _buildDetailRow('Amount:', formatNairas(amount), 15.sp),
           ],
         )),
   );
@@ -1214,7 +1110,7 @@ Widget _buildDetailRow(String title, String value, double textSize) {
         title,
         style: GoogleFonts.poppins(
             textStyle:
-                TextStyle(fontSize: textSize, fontWeight: FontWeight.w600)),
+                TextStyle(fontSize: 8.sp, fontWeight: FontWeight.w600)),
       ),
       Text(
         value,
@@ -1277,6 +1173,7 @@ Widget _buildFooterButton(
 
 String formatNairas(dynamic newamount) {
   double parsedAmount;
+  
   if (newamount is double) {
     parsedAmount = newamount;
   } else if (newamount is String) {
@@ -1286,13 +1183,18 @@ String formatNairas(dynamic newamount) {
         'Input should be a double or a string representing a number');
   }
 
+  // Round the amount to remove decimals
+  int roundedAmount = parsedAmount.round();
+
   // Convert the amount to a string with commas as thousand separators
-  String formattednewAmount = parsedAmount.toStringAsFixed(2).replaceAllMapped(
+  String formattednewAmount = roundedAmount.toString().replaceAllMapped(
         RegExp(r'\B(?=(\d{3})+(?!\d))'),
         (Match match) => ',',
       );
+
   return '₦$formattednewAmount';
 }
+
 
 class HeaderContainer extends StatelessWidget {
   final int? sellingPrice;
@@ -1424,9 +1326,6 @@ Widget _buildStatRow(String title, String value, double fontSize) {
     ],
   );
 }
-
-
-
 
 
 class TimerService {

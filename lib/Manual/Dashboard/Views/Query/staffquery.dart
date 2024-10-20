@@ -154,7 +154,7 @@ String formatTimestamp(String timestamp) {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: queries.isNotEmpty?TextField(
                       controller: replyController,
                       decoration: InputDecoration(
                         labelText: "Enter your reply",
@@ -163,7 +163,7 @@ String formatTimestamp(String timestamp) {
                         ),
                       ),
                       maxLines: 1, // Limit to single-line input
-                    ),
+                    ):Text("")
                   ),
                   isLoading
                       ? Padding(

@@ -26,9 +26,21 @@ class _StaffOverviewState extends State<StaffOverview> {
   StaffData? staff;
   String? username;
 
+  clockins() {
+    return ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(
+        "Please Clock-IN at Resumptions",
+        style: GoogleFonts.montserrat(),
+      )),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+   // clockins();
+
     fetchUsernameAndData(); // Fetch username and data when the widget is initialized
   }
 
@@ -45,47 +57,52 @@ class _StaffOverviewState extends State<StaffOverview> {
     }
   }
 
-Future<void> fetchStaffData(String username) async {
-  StaffResponse? response = await _staffApiService.fetchStaffData(username);
+  Future<void> fetchStaffData(String username) async {
+    StaffResponse? response = await _staffApiService.fetchStaffData(username);
 
-  if (response != null && response.success) {
-    staff = response.data;
+    if (response != null && response.success) {
+      staff = response.data;
 
-    setState(() {
-      totalAssignedTrades = staff!.assignedTrades.length;
+      setState(() {
+        totalAssignedTrades = staff!.assignedTrades.length;
 
-      // Count the total number of paid trades
-      totalPaidTrades = staff!.assignedTrades
-          .where((trade) => trade.isPaid && trade.amountPaid != null)
-          .length;
+        // Count the total number of paid trades
+        totalPaidTrades = staff!.assignedTrades
+            .where((trade) => trade.isPaid && trade.amountPaid != null)
+            .length;
 
-      // Calculate total mispaid trades
-      totalMispaidTrades = staff!.assignedTrades
-          .where((trade) =>
-              double.tryParse(trade.amountPaid?.toString() ?? '0') !=
-              double.tryParse(trade.fiatAmountRequested.toString()))
-          .length
-          .toDouble();
+        // Calculate total mispaid trades
+        totalMispaidTrades = staff!.assignedTrades
+            .where((trade) =>
+                double.tryParse(trade.amountPaid?.toString() ?? '0') !=
+                double.tryParse(trade.fiatAmountRequested.toString()))
+            .length
+            .toDouble();
 
-      // Calculate total speed
-      totalSpeed = staff!.assignedTrades
-          .where((trade) => trade.markedAt != null && !trade.markedAt!.contains('complain')) // Filter out 'complain'
-          .map((trade) => double.tryParse(trade.markedAt!) ?? 0) // Convert to double
-          .fold(0.0, (sum, speed) => sum + speed); // Sum speeds
+        // Calculate total speed
+        totalSpeed = staff!.assignedTrades
+            .where((trade) =>
+                trade.markedAt != null &&
+                !trade.markedAt!.contains('complain')) // Filter out 'complain'
+            .map((trade) =>
+                double.tryParse(trade.markedAt!) ?? 0) // Convert to double
+            .fold(0.0, (sum, speed) => sum + speed); // Sum speeds
 
-      // Count valid trades for average calculation
-      int speedCount = staff!.assignedTrades
-          .where((trade) => trade.markedAt != null && !trade.markedAt!.contains('complain'))
-          .length; // Count valid trades
+        // Count valid trades for average calculation
+        int speedCount = staff!.assignedTrades
+            .where((trade) =>
+                trade.markedAt != null && !trade.markedAt!.contains('complain'))
+            .length; // Count valid trades
 
-      // Calculate average speed
-      averageSpeed = speedCount > 0 ? totalSpeed / speedCount : 0; // Avoid division by zero
-    });
-  } else {
-    print('Failed to load staff data: ${response?.message}');
+        // Calculate average speed
+        averageSpeed = speedCount > 0
+            ? totalSpeed / speedCount
+            : 0; // Avoid division by zero
+      });
+    } else {
+      print('Failed to load staff data: ${response?.message}');
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -156,15 +173,15 @@ Future<void> fetchStaffData(String username) async {
 
                           // Fourth StatCard (new card)
                           Container(
-  width: 40.w,
-  child: OverviewCard(
-    title: 'Average Speed',
-    value: averageSpeed.toStringAsFixed(2), // Show two decimal places
-    icon: Icons.speed,
-    backgroundColor: Color(0xFFFFC107),
-  ),
-),
-
+                            width: 40.w,
+                            child: OverviewCard(
+                              title: 'Average Speed',
+                              value: averageSpeed.toStringAsFixed(
+                                  2), // Show two decimal places
+                              icon: Icons.speed,
+                              backgroundColor: Color(0xFFFFC107),
+                            ),
+                          ),
                         ],
                       ),
                     ),

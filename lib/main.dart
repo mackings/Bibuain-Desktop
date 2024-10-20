@@ -1,4 +1,4 @@
-import 'package:bdesktop/Manual/Msignin.dart';
+import 'package:bdesktop/Manual/Authentication/Msignin.dart';
 import 'package:bdesktop/firebase_options.dart';
 import 'package:bdesktop/home.dart';
 import 'package:bdesktop/Trainer/login.dart';

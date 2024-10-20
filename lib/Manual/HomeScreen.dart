@@ -1,4 +1,6 @@
-import 'package:bdesktop/Manual/Dashboard/Views/overview.dart';
+import 'package:bdesktop/Manual/Dashboard/Views/Overviews/Alloverviews.dart';
+import 'package:bdesktop/Manual/Dashboard/Views/Resumptions/Clocks.dart';
+import 'package:bdesktop/Manual/Dashboard/Views/Overviews/overview.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Query/staffquery.dart';
 import 'package:bdesktop/Manual/Trade%20Pool/PayingGround.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +32,11 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
     _pages = <Widget>[
       StaffOverview(),
       Payment(username: widget.username),  
-      StaffQuery()
+      StaffQuery(),
+      ALLStaffOverview(),
+      Clocks(),
+      Clocks(),
+      
     ];
   }
 
@@ -87,7 +93,7 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                   label: Text(
                     'Dashboard',
                     style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
+                      fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -98,7 +104,7 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                   label: Text(
                     'Pay center',
                     style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
+                      fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -109,18 +115,32 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                   label: Text(
                     'Query',
                     style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
+                      fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings, color: Colors.blue),
+
+               NavigationRailDestination(
+                  icon: Icon(Icons.history_edu_outlined),
+                  selectedIcon: Icon(Icons.history_edu_outlined, color: Colors.blue),
                   label: Text(
-                    'Payers',
+                    'Transactions',
                     style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
+                      fontSize: 7.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+
+                NavigationRailDestination(
+                  icon: Icon(Icons.fingerprint),
+                  selectedIcon: Icon(Icons.fingerprint_outlined, color: Colors.blue),
+                  label: Text(
+                    'Resumptions',
+                    style: GoogleFonts.poppins(
+                      fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
