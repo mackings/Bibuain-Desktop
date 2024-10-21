@@ -187,148 +187,138 @@ class _StaffOverviewState extends State<ALLStaffOverview> {
                     ),
                     SizedBox(height: 15.sp),
 
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12.sp),
-                        color: Colors.white,
-                        border: Border.all(color: Colors.black, width: 0.5),
-                      ),
-                      padding: EdgeInsets.all(16.sp),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Table with Titles
-                          Table(
-                            columnWidths: const {
-                              0: FlexColumnWidth(
-                                  2), // Adjust the width ratios as needed
-                              1: FlexColumnWidth(2),
-                              2: FlexColumnWidth(2),
-                              3: FlexColumnWidth(2),
-                              4: FlexColumnWidth(2),
-                              5: FlexColumnWidth(2),
-                              6: FlexColumnWidth(2),
-                            },
-                            // Remove vertical lines
-                            border: TableBorder(
-                              horizontalInside: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5)),
-                              bottom: BorderSide(color: Colors.grey),
-                              // No vertical lines
-                              left: BorderSide.none,
-                              right: BorderSide.none,
-                              top: BorderSide.none,
-                            ),
-                            children: [
-                              // Titles for the columns with extra padding
-                              TableRow(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 15.0), // Add bottom padding
-                                    child: Text("Account",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Amount (N)",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Paid (N)",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Handle",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Marked",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Assigned",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 8.0), // Add bottom padding
-                                    child: Text("Hash",
-                                        style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
-
-                              // Scrollable List of Assigned Trades
-...staff?.assignedTrades.map((trade) {
-  return TableRow(
+Container(
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(12.sp),
+    color: Colors.white,
+    border: Border.all(color: Colors.black, width: 0.5),
+  ),
+  padding: EdgeInsets.all(16.sp),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(trade.account, style: GoogleFonts.montserrat()),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(
-          NumberFormat('#,##0').format(double.parse(trade.fiatAmountRequested)),
-          style: GoogleFonts.montserrat(),
+      // Table with Titles
+      Table(
+        columnWidths: const {
+          0: FlexColumnWidth(2), // Adjust the width ratios as needed
+          1: FlexColumnWidth(2),
+          2: FlexColumnWidth(2),
+          3: FlexColumnWidth(2),
+          4: FlexColumnWidth(2),
+          5: FlexColumnWidth(2),
+          6: FlexColumnWidth(2),
+        },
+        // Remove vertical lines
+        border: TableBorder(
+          horizontalInside: BorderSide(color: Colors.grey.withOpacity(0.5)),
+          bottom: BorderSide(color: Colors.grey),
+          // No vertical lines
+          left: BorderSide.none,
+          right: BorderSide.none,
+          top: BorderSide.none,
         ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(
-          trade.amountPaid != null
-              ? NumberFormat('#,##0').format(double.tryParse(trade.amountPaid.toString()) ?? 0)
-              : "Not Paid",
-          style: GoogleFonts.montserrat(),
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(trade.handle, style: GoogleFonts.montserrat()),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(trade.markedAt ?? "Current", style: GoogleFonts.montserrat(color: Colors.red)),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: Text(
-          DateFormat('MMM d, h:mm a').format(
-            DateTime.parse(trade.assignedAt).add(Duration(hours: 1)) // Adjust the assignedAt time
+        children: [
+          // Titles for the columns with extra padding
+          TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15.0), // Add bottom padding
+                child: Text("Account", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Amount (N)", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Paid (N)", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Handle", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Marked", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Assigned", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0), // Add bottom padding
+                child: Text("Hash", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
-          style: GoogleFonts.montserrat(),
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
-        child: SelectableText(trade.tradeHash, style: GoogleFonts.montserrat()),
+
+          // Scrollable List of Assigned Trades
+          ...(() {
+            // Filter and sort the assigned trades by assignedAt in descending order (newest first)
+            final sortedTrades = staff?.assignedTrades
+                ?.where((trade) => trade.assignedAt != null) // Ensure assignedAt is not null
+                ?.toList() // Convert to a List
+              ?..sort((a, b) => DateTime.parse(b.assignedAt).compareTo(DateTime.parse(a.assignedAt))); // Sort in place
+
+            // Map the sorted trades to TableRow
+            return sortedTrades?.map((trade) {
+              return TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(trade.account, style: GoogleFonts.montserrat()),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(
+                      NumberFormat('#,##0').format(double.parse(trade.fiatAmountRequested)),
+                      style: GoogleFonts.montserrat(),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(
+                      trade.amountPaid != null
+                          ? NumberFormat('#,##0').format(double.tryParse(trade.amountPaid.toString()) ?? 0)
+                          : "Not Paid",
+                      style: GoogleFonts.montserrat(),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(trade.handle, style: GoogleFonts.montserrat()),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(trade.markedAt ?? "Current", style: GoogleFonts.montserrat(color: Colors.red)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: Text(
+                      DateFormat('MMM d, h:mm a').format(
+                        DateTime.parse(trade.assignedAt).add(Duration(hours: 1)) // Adjust the assignedAt time
+                      ),
+                      style: GoogleFonts.montserrat(),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding
+                    child: SelectableText(trade.tradeHash, style: GoogleFonts.montserrat()),
+                  ),
+                ],
+              );
+            }).toList() ?? [];
+          })(),
+        ],
       ),
     ],
-  );
-}).toList() ?? [],
+  ),
+),
 
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+
+
+
+
                   ],
                 );
               },
