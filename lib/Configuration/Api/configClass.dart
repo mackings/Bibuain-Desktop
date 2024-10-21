@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:bdesktop/Configuration/Model/model.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class OfferService {
   final String offersApiUrl =
@@ -41,95 +43,126 @@ class OfferService {
     }
   }
 
+  // Get saved values from SharedPreferences
+  Future<Map<String, num>> _getSavedValues() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String? savedBinbinRate = prefs.getString('override');
+    String? savedMarkupValue = prefs.getString('markup');
+
+    num binbinrate = savedBinbinRate != null
+        ? num.parse(
+            savedBinbinRate.replaceAll(',', '')) // Remove commas for parsing
+        : 1640; // Default value if not found
+
+    num markupValue = savedMarkupValue != null
+        ? num.parse(
+            savedMarkupValue.replaceAll(',', '')) // Remove commas for parsing
+        : 250000; // Default value if not found
+
+    print(
+        "Prefs Got ${savedBinbinRate} ${savedMarkupValue} and formatted ${binbinrate} ${markupValue}");
+    return {
+      'binbinrate': binbinrate,
+      'markupValue': markupValue,
+    };
+  }
+
   // Calculate Prices
+Future<Map<String, double>> calculatePrices(Map<String, dynamic> ratesData) async {
 
-
-  Map<String, double> calculatePrices(Map<String, dynamic> ratesData) {
   num? paxfulRate = ratesData['paxfulRate']['data'];
   num? binanceRate = ratesData['binanceRate']['price'];
 
-  num binbinrate = 1698;
-  num markupValue = 250000;
+  // Get binbinrate and markupValue from SharedPreferences
+  Map<String, num> savedValues = await _getSavedValues();
+  num binbinrate = savedValues['binbinrate']!;
+  num markupValue = savedValues['markupValue']!;
 
-  // Ensure rates are non-null before proceeding
+  // Format values in thousands for display purposes
+  final formatter = NumberFormat("#,##0");
+  String formattedBinbinRate = formatter.format(binbinrate);  // String
+  String formattedMarkupValue = formatter.format(markupValue); // String
+
+  // Print the formatted values to the console
+  print("Binbinrate used (formatted): $formattedBinbinRate");
+  print("Markup Value used (formatted): $formattedMarkupValue");
+
+  num parsedBinbinRate = num.parse(formattedBinbinRate.replaceAll(',', ''));
+  num parsedMarkupValue = num.parse(formattedMarkupValue.replaceAll(',', ''));
+
+
   if (paxfulRate != null && binanceRate != null) {
-    final formatter = NumberFormat("#,##0");
 
-    num sellingPrice = paxfulRate * binbinrate;
+    num sellingPrice = paxfulRate * parsedBinbinRate;
     num costPrice;
     num rateDifference;
 
     if (binanceRate >= paxfulRate) {
-      rateDifference = binbinrate * (paxfulRate - binanceRate);
-      costPrice = sellingPrice - rateDifference - markupValue;
+      rateDifference = parsedBinbinRate * (paxfulRate - binanceRate);
+      costPrice = sellingPrice - rateDifference - parsedMarkupValue;
     } else {
-      costPrice = sellingPrice - markupValue;
+      costPrice = sellingPrice - parsedMarkupValue;
     }
 
-    // Calculate margin
     num margin = ((sellingPrice - costPrice) / costPrice) * 100;
-    String formattedMarkup = formatter.format(markupValue);
-
-    print("Formatted Markup: $formattedMarkup");
     print("Calculated Margin: ${margin.toStringAsFixed(2)}%");
 
-    // Return calculated prices and margin as double
     return {
       'CP': costPrice.toDouble(),
       'SP': sellingPrice.toDouble(),
-      'Margin': margin.toDouble() // Add margin to the returned map
+      'Margin': margin.toDouble(),
     };
   } else {
     throw Exception("Rates data is missing or null");
   }
 }
 
-  // Map<String, double> calculatePrices(Map<String, dynamic> ratesData) {
-  //   num? paxfulRate = ratesData['paxfulRate']['data'];
-  //   num? binanceRate = ratesData['binanceRate']['price'];
 
-  //   // Assuming binbinrate and markupValue are predefined
-  //   num binbinrate = 1698;
-  //   num markupValue = 250000;
-  //   num systemOverride = 1704;
-
-  //   // Ensure rates are non-null before proceeding
-  //   if (paxfulRate != null && binanceRate != null) {
-  //     // Create a number formatter
-  //     final formatter = NumberFormat("#,##0");
-
-  //     // Calculate the selling price using the numerical binbinrate
-  //     num sellingPrice = paxfulRate * binbinrate;
-
-  //     // Initialize cost price and rate difference as num
-
-  //     num costPrice;
-  //     num rateDifference;
-
-  //     if (binanceRate >= paxfulRate) {
-  //       rateDifference = binbinrate * (paxfulRate - binanceRate);
-  //       costPrice = sellingPrice - rateDifference - markupValue;
-  //     } else {
-  //       costPrice = sellingPrice - markupValue;
-  //     }
-
-  //     // Format the system override and markup for display
-  //     String formattedSystemOverride = formatter.format(systemOverride);
-  //     String formattedMarkup = formatter.format(markupValue);
-
-  //     // Output formatted values (optional: log or display them)
-  //     print("Formatted System Override: $formattedSystemOverride");
-  //     print("Formatted Markup: $formattedMarkup");
-
-  //     // Return calculated prices as double
-  //     return {
-  //       'CP': costPrice
-  //           .toDouble(), // Convert costPrice to double before returning
-  //       'SP': sellingPrice
-  //           .toDouble(), // Convert sellingPrice to double before returning
-  //     };
-  //   } else {
-  //     throw Exception("Rates data is missing or null");
-  //   }
-  // }
 }
+
+
+
+
+  // Calculate Prices
+
+
+//   Map<String, double> calculatePrices(Map<String, dynamic> ratesData) {
+//   num? paxfulRate = ratesData['paxfulRate']['data'];
+//   num? binanceRate = ratesData['binanceRate']['price'];
+
+//   num binbinrate = 1640;
+//   num markupValue = 250000;
+
+//   // Ensure rates are non-null before proceeding
+//   if (paxfulRate != null && binanceRate != null) {
+//     final formatter = NumberFormat("#,##0");
+
+//     num sellingPrice = paxfulRate * binbinrate;
+//     num costPrice;
+//     num rateDifference;
+
+//     if (binanceRate >= paxfulRate) {
+//       rateDifference = binbinrate * (paxfulRate - binanceRate);
+//       costPrice = sellingPrice - rateDifference - markupValue;
+//     } else {
+//       costPrice = sellingPrice - markupValue;
+//     }
+
+//     // Calculate margin
+//     num margin = ((sellingPrice - costPrice) / costPrice) * 100;
+//     String formattedMarkup = formatter.format(markupValue);
+
+//     print("Formatted Markup: $formattedMarkup");
+//     print("Calculated Margin: ${margin.toStringAsFixed(2)}%");
+
+//     // Return calculated prices and margin as double
+//     return {
+//       'CP': costPrice.toDouble(),
+//       'SP': sellingPrice.toDouble(),
+//       'Margin': margin.toDouble() // Add margin to the returned map
+//     };
+//   } else {
+//     throw Exception("Rates data is missing or null");
+//   }
+// }

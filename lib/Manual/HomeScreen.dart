@@ -1,3 +1,4 @@
+import 'package:bdesktop/Configuration/View/Configdashboard.dart';
 import 'package:bdesktop/Manual/Complains/Tradecomplains.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Overviews/Alloverviews.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Resumptions/Clocks.dart';
@@ -36,6 +37,7 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
       StaffQuery(),
       ALLStaffOverview(),
       TradeComplains(),
+      Configdashboard(),
       Clocks(),
       Clocks(),
       
@@ -141,6 +143,19 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                   selectedIcon: Icon(Icons.settings_accessibility, color: Colors.blue),
                   label: Text(
                     'CC Zone',
+                    style: GoogleFonts.poppins(
+                      fontSize: 7.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                
+                NavigationRailDestination(
+                  icon: Icon(Icons.report_problem_outlined),
+                  selectedIcon: Icon(Icons.report_problem_outlined, color: Colors.blue),
+                  label: Text(
+                    'Configurations',
                     style: GoogleFonts.poppins(
                       fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
