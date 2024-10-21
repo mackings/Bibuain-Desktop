@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
@@ -16,7 +15,6 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
-
 
 class Payment extends StatefulWidget {
   final String username;
@@ -73,32 +71,65 @@ class _PaymentState extends State<Payment> {
     });
   }
 
-  Future<void> _markTradeAsCC(BuildContext context, String username) async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'trade_hash': selectedTradeHash,
-          'markedAt': 'complain', // Using the elapsed time
-          'amountPaid': fiatAmount,
-        }),
-      );
 
-      if (response.statusCode == 200) {
-        print(">>>>> Marked ${response.body}");
+
+Future<void> _markTradeAsCC(BuildContext context, String username) async {
+  if (selectedTradeHash == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('No trade selected.')),
+    );
+    return;
+  }
+
+  try {
+    // 1. Make API call to mark trade
+    final response = await http.post(
+      Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'trade_hash': selectedTradeHash,
+        'markedAt': 'complain', // Using the elapsed time
+        'amountPaid': fiatAmount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print(">>>>> Marked ${response.body}");
+
+      // 2. Move trade to complaints collection in Firestore
+      final tradeDoc = await FirebaseFirestore.instance
+          .collection('manualsystem')
+          .doc(selectedTradeHash)
+          .get();
+
+      if (tradeDoc.exists) {
+        final tradeData = tradeDoc.data() as Map<String, dynamic>;
+
+        // Copy trade data to 'complaints' collection
         await FirebaseFirestore.instance
-            .collection('staff')
+            .collection('complaints')
+            .doc(selectedTradeHash)
+            .set(tradeData);
+
+        // Update the status in the 'complaints' collection to 'unresolved'
+        await FirebaseFirestore.instance
+            .collection('complaints')
+            .doc(selectedTradeHash)
+            .update({'status': 'unresolved'});
+
+        // 3. Update 'manualsystem' collection
+        await FirebaseFirestore.instance
+            .collection('manualsystem')
             .doc(loggedInStaffID)
             .update({
           'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
         });
 
         await FirebaseFirestore.instance
-            .collection('trades')
+            .collection('manualsystem')
             .doc(selectedTradeHash)
             .update({
-          'isPaid': true,
+          'isPaid': false,
         });
 
         // Reset UI elements and start listening for new trades
@@ -110,19 +141,138 @@ class _PaymentState extends State<Payment> {
           }
         });
 
-        setState(() {
-          selectedTradeHash = null; // Reset selected trade
-        });
+        // Show success Snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Trade marked as complaint successfully.')),
+        );
       } else {
-        print('Failed to mark trade as paid: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Trade not found.')),
+        );
       }
-    } catch (e) {
-      setState(() {
-        selectedTradeHash = null;
-      });
-      print('Error making API call: $e');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark trade as paid: ${response.body}')),
+      );
     }
+  } catch (e) {
+    setState(() {
+      selectedTradeHash = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An error occurred: $e')),
+    );
   }
+}
+
+  // Future<void> _markTradeAsCC(BuildContext context, String username) async {
+  //   try { 
+  //     final response = await http.post(
+  //       Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({
+  //         'trade_hash': selectedTradeHash,
+  //         'markedAt': 'complain', // Using the elapsed time
+  //         'amountPaid': fiatAmount,
+  //       }),
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       print(">>>>> Marked ${response.body}");
+  //       await FirebaseFirestore.instance
+  //           .collection('manualsystem')
+  //           .doc(loggedInStaffID)
+  //           .update({
+  //         'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+  //       });
+
+  //       await FirebaseFirestore.instance
+  //           .collection('manualsystem')
+  //           .doc(selectedTradeHash)
+  //           .update({
+  //         'isPaid': false,
+  //       });
+
+  //       // Reset UI elements and start listening for new trades
+  //       WidgetsBinding.instance.addPostFrameCallback((_) {
+  //         if (mounted) {
+  //           setState(() {
+  //             selectedTradeHash = null;
+  //           });
+  //         }
+  //       });
+
+  //       setState(() {
+  //         selectedTradeHash = null; // Reset selected trade
+  //       });
+  //     } else {
+  //       print('Failed to mark trade as paid: ${response.body}');
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       selectedTradeHash = null;
+  //     });
+  //     print('Error making API call: $e');
+  //   }
+  // }
+
+// Future<void> _markAsComplain() async {
+//   if (selectedTradeHash == null) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('No trade selected.')),
+//     );
+//     return;
+//   }
+
+//   try {
+//     final tradeDoc = await FirebaseFirestore.instance
+//         .collection('manualsystem')
+//         .doc(selectedTradeHash)
+//         .get();
+
+//     if (tradeDoc.exists) {
+//       final tradeData = tradeDoc.data() as Map<String, dynamic>;
+
+//       // Copy trade data to 'complaints' collection
+//       await FirebaseFirestore.instance
+//           .collection('complaints')
+//           .doc(selectedTradeHash)
+//           .set(tradeData);
+
+//       // Update the status to 'unresolved'
+//       await FirebaseFirestore.instance
+//           .collection('complaints')
+//           .doc(selectedTradeHash)
+//           .update({'status': 'unresolved'});
+
+//       // Refresh UI by clearing selected trade and triggering a UI rebuild
+//       WidgetsBinding.instance.addPostFrameCallback((_) {
+//         if (mounted) {
+//           setState(() {
+//             selectedTradeHash = null;
+            
+//           });
+//         }
+//       });
+
+//       // Show success Snackbar
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Trade marked as complaint successfully.')),
+//       );
+//     } else {
+//       // Show Snackbar if trade not found
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Trade not found.')),
+//       );
+//     }
+//   } catch (e) {
+//     // Show error Snackbar
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('An error occurred: $e')),
+//     );
+//   }
+// }
+
 
   Future<Map<String, dynamic>> getTradeStats() async {
     int totalTrades = 0;
@@ -183,11 +333,9 @@ class _PaymentState extends State<Payment> {
     };
   }
 
-
   String _formatDateTime(DateTime dateTime) {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
-
 
   void verifyAccountWithService(
       BuildContext context, AccountService accountService) async {
@@ -204,73 +352,74 @@ class _PaymentState extends State<Payment> {
     );
   }
 
-Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) {
-  String? accountNumber;
-  String? holderName;
-  String? bankName;
+  Map<String, dynamic>? _checkForBankDetails(
+      List<Map<String, dynamic>> messages) {
+    String? accountNumber;
+    String? holderName;
+    String? bankName;
 
-  // Regex to find a 10-digit account number
-  final accountNumberRegex = RegExp(r'\b\d{10}\b');
+    // Regex to find a 10-digit account number
+    final accountNumberRegex = RegExp(r'\b\d{10}\b');
 
-  // Updated regex to match a name pattern (first and last name or full name with spaces)
-  final nameRegex = RegExp(r'\b[A-Za-z]{2,}\b(?:\s\b[A-Za-z]{2,}\b)+');
+    // Updated regex to match a name pattern (first and last name or full name with spaces)
+    final nameRegex = RegExp(r'\b[A-Za-z]{2,}\b(?:\s\b[A-Za-z]{2,}\b)+');
 
-  for (var message in messages) {
-    final messageText = message['text'];
+    for (var message in messages) {
+      final messageText = message['text'];
 
-    // Check if the message contains a structured bank account object
-    if (messageText is Map && messageText.containsKey('bank_account')) {
-      final bankAccount = messageText['bank_account'];
-      accountNumber = bankAccount['account_number'];
-      holderName = bankAccount['holder_name'];
-      bankName = bankAccount['bank_name'];
-      
-      if (accountNumber != null && holderName != null && bankName != null) {
-        print('Structured bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
-        return {
-          'account_number': accountNumber,
-          'holder_name': holderName,
-          'bank_name': bankName,
-        };
-      }
-    } else if (messageText is String) {
-      // Check for account number in plain text
-      final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
-      if (accountNumberMatch != null) {
-        accountNumber = accountNumberMatch.group(0);
-      }
+      // Check if the message contains a structured bank account object
+      if (messageText is Map && messageText.containsKey('bank_account')) {
+        final bankAccount = messageText['bank_account'];
+        accountNumber = bankAccount['account_number'];
+        holderName = bankAccount['holder_name'];
+        bankName = bankAccount['bank_name'];
 
-      // Check for name in plain text
-      final nameMatch = nameRegex.firstMatch(messageText);
-      if (nameMatch != null) {
-        holderName = nameMatch.group(0);
-      }
+        if (accountNumber != null && holderName != null && bankName != null) {
+          print(
+              'Structured bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+          return {
+            'account_number': accountNumber,
+            'holder_name': holderName,
+            'bank_name': bankName,
+          };
+        }
+      } else if (messageText is String) {
+        // Check for account number in plain text
+        final accountNumberMatch = accountNumberRegex.firstMatch(messageText);
+        if (accountNumberMatch != null) {
+          accountNumber = accountNumberMatch.group(0);
+        }
 
-      // Check for bank name using the bankCodes map
-      for (var bank in accountService.bankCodes.keys) {
-        if (messageText.toLowerCase().contains(bank.toLowerCase())) {
-          bankName = bank;
-          break;
+        // Check for name in plain text
+        final nameMatch = nameRegex.firstMatch(messageText);
+        if (nameMatch != null) {
+          holderName = nameMatch.group(0);
+        }
+
+        // Check for bank name using the bankCodes map
+        for (var bank in accountService.bankCodes.keys) {
+          if (messageText.toLowerCase().contains(bank.toLowerCase())) {
+            bankName = bank;
+            break;
+          }
+        }
+
+        // Once we have all details, return them
+        if (accountNumber != null && holderName != null && bankName != null) {
+          print(
+              'Plain text bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
+          return {
+            'account_number': accountNumber,
+            'holder_name': holderName,
+            'bank_name': bankName,
+          };
         }
       }
-
-      // Once we have all details, return them
-      if (accountNumber != null && holderName != null && bankName != null) {
-        print('Plain text bank details found: Account: $accountNumber, Name: $holderName, Bank: $bankName');
-        return {
-          'account_number': accountNumber,
-          'holder_name': holderName,
-          'bank_name': bankName,
-        };
-      }
     }
+
+    print('No valid bank details found.');
+    return null;
   }
-
-  print('No valid bank details found.');
-  return null;
-}
-
-
 
   void handleIncomingMessages(
     List<Map<String, dynamic>> messages,
@@ -467,12 +616,11 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
     setState(() {});
   }
 
-
   @override
   void initState() {
     super.initState();
     _loadToken();
-   // _showClockInDialog();
+    // _showClockInDialog();
     _fetchDurationFromFirestore();
     selectedTradeHash == null ? Kickstop() : null;
     loggedInStaffID = widget.username;
@@ -481,7 +629,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
       selectedTradeHash = null;
     });
     _rateService.calculatePrices(setState);
- }
+  }
 
   void _listenToStaffChanges() {
     _staffSubscription = FirebaseFirestore.instance
@@ -536,12 +684,10 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
       appBar: AppBar(
         automaticallyImplyLeading: false,
       ),
-
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
         child: Row(
           children: [
-               
             SizedBox(
               width: 4.w,
             ),
@@ -596,9 +742,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                         padding: const EdgeInsets.only(left: 350),
                         child: Text(
                           'No Assigned Trade Yet.',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 8.sp
-                          ),
+                          style: GoogleFonts.montserrat(fontSize: 8.sp),
                         ),
                       ),
                     );
@@ -772,6 +916,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                     builder: (context) {
                                       return ConfirmCCDialog(
                                         onConfirm: () {
+                                         // _markAsComplain();
                                           _markTradeAsCC(
                                               context, widget.username);
                                           Navigator.pop(context);
@@ -800,8 +945,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                   ),
                                 ),
                               ),
-
-
                               GestureDetector(
                                 onTap: () {
                                   showDialog(
@@ -812,7 +955,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                           _timerService!.stop();
                                           if (latestTrade['account'] ==
                                               'Paxful') {
-                                           _tradeService.markTradeAsPaid(
+                                            _tradeService.markTradeAsPaid(
                                               tradeHash:
                                                   selectedTradeHash.toString(),
                                               elapsedTime:
@@ -825,9 +968,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                                             );
 
                                             print("Paxful Account");
-
                                           } else {
-
                                             print("Noones Account");
 
                                             _tradeService.markTradeAsPaid(
@@ -879,7 +1020,6 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
               ),
             ),
             SizedBox(width: 20),
-
             Expanded(
               flex: 3,
               child: selectedTradeHash == null
@@ -939,55 +1079,68 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               });
 
                               return ListView.builder(
-  itemCount: messages.length,
-  itemBuilder: (context, index) {
-    final message = messages[index];
-    final messageTime = _formatDateTime(
-        _convertToDateTime(message['timestamp'])); // Assuming this gives you the formatted time.
-    final messageAuthor = message['author'];
-    final isMine = [
-      '2minmax_pro',
-      'Turbopay',
-      '2minutepay'
-    ].contains(messageAuthor);
+                                itemCount: messages.length,
+                                itemBuilder: (context, index) {
+                                  final message = messages[index];
+                                  final messageTime = _formatDateTime(
+                                      _convertToDateTime(message[
+                                          'timestamp'])); // Assuming this gives you the formatted time.
+                                  final messageAuthor = message['author'];
+                                  final isMine = [
+                                    '2minmax_pro',
+                                    'Turbopay',
+                                    '2minutepay'
+                                  ].contains(messageAuthor);
 
-    String messageText;
-    if (message['text'] is Map<String, dynamic> &&
-        message['text'].containsKey('bank_account')) {
-      final bankAccount = message['text']['bank_account'];
-      final name = bankAccount['holder_name'];
-      final amount = bankAccount['amount'];
-      final bank = bankAccount['bank_name'];
-      messageText = 'Name: $name\nAmount: $amount\nBank: $bank';
-    } else {
-      messageText = message['text'].toString();
-    }
+                                  String messageText;
+                                  if (message['text'] is Map<String, dynamic> &&
+                                      message['text']
+                                          .containsKey('bank_account')) {
+                                    final bankAccount =
+                                        message['text']['bank_account'];
+                                    final name = bankAccount['holder_name'];
+                                    final amount = bankAccount['amount'];
+                                    final bank = bankAccount['bank_name'];
+                                    messageText =
+                                        'Name: $name\nAmount: $amount\nBank: $bank';
+                                  } else {
+                                    messageText = message['text'].toString();
+                                  }
 
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isMine ? Colors.blue[400] : Colors.grey[300],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        padding: EdgeInsets.all(10),
-        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-        child: Column(
-          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(messageText, style: GoogleFonts.poppins()),
-            SizedBox(height: 5),
-            Text(
-              messageTime, // This should show the message's timestamp
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  },
-);
-
+                                  return Align(
+                                    alignment: isMine
+                                        ? Alignment.centerRight
+                                        : Alignment.centerLeft,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: isMine
+                                            ? Colors.blue[400]
+                                            : Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: EdgeInsets.all(10),
+                                      margin: EdgeInsets.symmetric(
+                                          vertical: 5, horizontal: 10),
+                                      child: Column(
+                                        crossAxisAlignment: isMine
+                                            ? CrossAxisAlignment.end
+                                            : CrossAxisAlignment.start,
+                                        children: [
+                                          Text(messageText,
+                                              style: GoogleFonts.poppins()),
+                                          SizedBox(height: 5),
+                                          Text(
+                                            messageTime, // This should show the message's timestamp
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
                             },
                           ),
                         ),
@@ -1009,8 +1162,7 @@ Map<String, dynamic>? _checkForBankDetails(List<Map<String, dynamic>> messages) 
                               SizedBox(width: 10),
                               FloatingActionButton(
                                 mini: true,
-                                onPressed: () {
-                                },
+                                onPressed: () {},
                                 //  _sendMessage, // Handle sending messages
                                 child: Icon(Icons.send),
                               ),
@@ -1109,8 +1261,7 @@ Widget _buildDetailRow(String title, String value, double textSize) {
       Text(
         title,
         style: GoogleFonts.poppins(
-            textStyle:
-                TextStyle(fontSize: 8.sp, fontWeight: FontWeight.w600)),
+            textStyle: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.w600)),
       ),
       Text(
         value,
@@ -1132,7 +1283,6 @@ Widget _buildFooterButtons(BuildContext context) {
       ),
       GestureDetector(
         onTap: () {
-
           showDialog(
             context: context,
             builder: (context) {
@@ -1143,7 +1293,6 @@ Widget _buildFooterButtons(BuildContext context) {
               });
             },
           );
-
         },
         child: _buildFooterButton(
             context, "Mark Paid", Colors.white, Colors.black),
@@ -1173,7 +1322,7 @@ Widget _buildFooterButton(
 
 String formatNairas(dynamic newamount) {
   double parsedAmount;
-  
+
   if (newamount is double) {
     parsedAmount = newamount;
   } else if (newamount is String) {
@@ -1194,7 +1343,6 @@ String formatNairas(dynamic newamount) {
 
   return '₦$formattednewAmount';
 }
-
 
 class HeaderContainer extends StatelessWidget {
   final int? sellingPrice;
@@ -1326,7 +1474,6 @@ Widget _buildStatRow(String title, String value, double fontSize) {
     ],
   );
 }
-
 
 class TimerService {
   Timer? _timer;

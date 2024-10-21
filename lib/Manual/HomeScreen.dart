@@ -1,3 +1,4 @@
+import 'package:bdesktop/Manual/Complains/Tradecomplains.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Overviews/Alloverviews.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Resumptions/Clocks.dart';
 import 'package:bdesktop/Manual/Dashboard/Views/Overviews/overview.dart';
@@ -34,6 +35,7 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
       Payment(username: widget.username),  
       StaffQuery(),
       ALLStaffOverview(),
+      TradeComplains(),
       Clocks(),
       Clocks(),
       
@@ -98,6 +100,7 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                     ),
                   ),
                 ),
+
                 NavigationRailDestination(
                   icon: Icon(Icons.account_balance_outlined),
                   selectedIcon: Icon(Icons.account_balance, color: Colors.blue),
@@ -126,6 +129,18 @@ class _PayersHomeScreenState extends State<PayersHomeScreen> {
                   selectedIcon: Icon(Icons.history_edu_outlined, color: Colors.blue),
                   label: Text(
                     'Transactions',
+                    style: GoogleFonts.poppins(
+                      fontSize: 7.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                  NavigationRailDestination(
+                  icon: Icon(Icons.settings),
+                  selectedIcon: Icon(Icons.settings_accessibility, color: Colors.blue),
+                  label: Text(
+                    'CC Zone',
                     style: GoogleFonts.poppins(
                       fontSize: 7.sp,
                       fontWeight: FontWeight.w600,
