@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 
 class OfferService {
+  
   final String offersApiUrl =
       'https://b-backend-xe8q.onrender.com/offers/paxful/get-multiple';
   final String ratesApiUrl = 'https://b-backend-xe8q.onrender.com/market/rates';

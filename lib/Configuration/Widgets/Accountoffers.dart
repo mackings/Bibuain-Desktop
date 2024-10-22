@@ -1,15 +1,16 @@
 import 'package:bdesktop/Configuration/Model/model.dart';
+import 'package:bdesktop/Configuration/Widgets/SingleConfig.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:skeletonizer/skeletonizer.dart'; 
+import 'package:skeletonizer/skeletonizer.dart';
 
 class AccountOffersWidget extends StatefulWidget {
   final Future<List<AccountOffers>> futureOffers;
 
   const AccountOffersWidget({
     Key? key,
-    required this.futureOffers, 
+    required this.futureOffers,
   }) : super(key: key);
 
   @override
@@ -18,7 +19,7 @@ class AccountOffersWidget extends StatefulWidget {
 
 class _AccountOffersWidgetState extends State<AccountOffersWidget> {
   bool _isDropdownExpanded = false;
-  List<AccountOffers>? _lastOffers; // Variable to store last fetched offers
+  List<AccountOffers>? _lastOffers;
 
   @override
   void initState() {
@@ -41,12 +42,14 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
         future: widget.futureOffers,
         builder: (context, offersSnapshot) {
           // Show skeleton while data is loading
-          bool isLoading = offersSnapshot.connectionState == ConnectionState.waiting;
+          bool isLoading =
+              offersSnapshot.connectionState == ConnectionState.waiting;
 
           return Skeletonizer(
             enabled: isLoading, // Show skeleton if loading
             child: isLoading && _lastOffers != null
-                ? _buildOffersList(_lastOffers!) // Show last fetched offers while loading
+                ? _buildOffersList(
+                    _lastOffers!) // Show last fetched offers while loading
                 : offersSnapshot.hasError
                     ? Center(child: Text('Error: ${offersSnapshot.error}'))
                     : offersSnapshot.hasData && offersSnapshot.data!.isNotEmpty
@@ -98,7 +101,7 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
             ),
           ),
         ),
-        // Conditionally show the list of accounts when expanded
+
         _isDropdownExpanded
             ? Expanded(
                 child: ListView.builder(
@@ -106,10 +109,12 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
                   itemBuilder: (context, index) {
                     var account = offers[index];
                     double commonMargin = account.offers.first.margin;
-                    double commonFiatPricePerBtc = account.offers.first.fiatPricePerBtc;
+                    double commonFiatPricePerBtc =
+                        account.offers.first.fiatPricePerBtc;
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(6),
@@ -121,11 +126,13 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(6)),
                                 color: Colors.grey[200],
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     account.username.toUpperCase(),
@@ -137,16 +144,26 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
                                   IconButton(
                                     icon: Icon(Icons.info_outline, size: 18),
                                     onPressed: () {
-                                      print('More info for account: ${account.username}');
+
+                                        showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return SingleConfigurationsDialog(
+                                                  username: account.username);
+                                            },
+                                          );
+                                          
                                     },
                                   ),
                                 ],
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 4),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Margin: ${NumberFormat('#,##0.00').format(commonMargin)}',
@@ -177,5 +194,3 @@ class _AccountOffersWidgetState extends State<AccountOffersWidget> {
     );
   }
 }
-
-

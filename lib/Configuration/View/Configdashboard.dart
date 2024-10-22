@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:bdesktop/Configuration/Api/configClass.dart';
 import 'package:bdesktop/Configuration/Model/model.dart';
 import 'package:bdesktop/Configuration/Widgets/Accountoffers.dart';
@@ -35,7 +34,7 @@ class _ConfigdashboardState extends State<Configdashboard> {
     super.initState();
     fetchData();
 
-    _timer = Timer.periodic(Duration(seconds: 60), (timer) {
+    _timer = Timer.periodic(Duration(minutes: 5), (timer) {
       fetchData();
     });
   }
@@ -97,7 +96,7 @@ void fetchData() {
     ],
   ),
 
-  
+
   body: FutureBuilder<Map<String, dynamic>>(
     future: futureRates,
     builder: (context, ratesSnapshot) {
@@ -183,14 +182,18 @@ void fetchData() {
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
 
               Expanded(
                 child: Row(
                   children: [
+
                     AccountOffersWidget(futureOffers: futureOffers),
                     const SizedBox(width: 10),
-                    AccountOffersWidget(futureOffers: futureOffers),
+                   AccountOffersWidget(futureOffers: futureOffers),
+
+                    
                   ],
                 ),
               ),

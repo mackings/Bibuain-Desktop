@@ -122,3 +122,114 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
+
+
+  // Future<void> _markTradeAsCC(BuildContext context, String username) async {
+  //   try { 
+  //     final response = await http.post(
+  //       Uri.parse('https://b-backend-xe8q.onrender.com/Trade/mark'),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({
+  //         'trade_hash': selectedTradeHash,
+  //         'markedAt': 'complain', // Using the elapsed time
+  //         'amountPaid': fiatAmount,
+  //       }),
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       print(">>>>> Marked ${response.body}");
+  //       await FirebaseFirestore.instance
+  //           .collection('manualsystem')
+  //           .doc(loggedInStaffID)
+  //           .update({
+  //         'assignedTrades': FieldValue.arrayRemove([selectedTradeHash]),
+  //       });
+
+  //       await FirebaseFirestore.instance
+  //           .collection('manualsystem')
+  //           .doc(selectedTradeHash)
+  //           .update({
+  //         'isPaid': false,
+  //       });
+
+  //       // Reset UI elements and start listening for new trades
+  //       WidgetsBinding.instance.addPostFrameCallback((_) {
+  //         if (mounted) {
+  //           setState(() {
+  //             selectedTradeHash = null;
+  //           });
+  //         }
+  //       });
+
+  //       setState(() {
+  //         selectedTradeHash = null; // Reset selected trade
+  //       });
+  //     } else {
+  //       print('Failed to mark trade as paid: ${response.body}');
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       selectedTradeHash = null;
+  //     });
+  //     print('Error making API call: $e');
+  //   }
+  // }
+
+// Future<void> _markAsComplain() async {
+//   if (selectedTradeHash == null) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('No trade selected.')),
+//     );
+//     return;
+//   }
+
+//   try {
+//     final tradeDoc = await FirebaseFirestore.instance
+//         .collection('manualsystem')
+//         .doc(selectedTradeHash)
+//         .get();
+
+//     if (tradeDoc.exists) {
+//       final tradeData = tradeDoc.data() as Map<String, dynamic>;
+
+//       // Copy trade data to 'complaints' collection
+//       await FirebaseFirestore.instance
+//           .collection('complaints')
+//           .doc(selectedTradeHash)
+//           .set(tradeData);
+
+//       // Update the status to 'unresolved'
+//       await FirebaseFirestore.instance
+//           .collection('complaints')
+//           .doc(selectedTradeHash)
+//           .update({'status': 'unresolved'});
+
+//       // Refresh UI by clearing selected trade and triggering a UI rebuild
+//       WidgetsBinding.instance.addPostFrameCallback((_) {
+//         if (mounted) {
+//           setState(() {
+//             selectedTradeHash = null;
+            
+//           });
+//         }
+//       });
+
+//       // Show success Snackbar
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Trade marked as complaint successfully.')),
+//       );
+//     } else {
+//       // Show Snackbar if trade not found
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Trade not found.')),
+//       );
+//     }
+//   } catch (e) {
+//     // Show error Snackbar
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('An error occurred: $e')),
+//     );
+//   }
+// }
